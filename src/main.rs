@@ -1,5 +1,7 @@
+#![feature(async_closure)]
 use std::{{fs, io}, collections::HashMap, env, error::Error, fs::File, path::Path, process::Command, time::Instant};
 use std::io::{Cursor, Write};
+use std::ops::Add;
 use std::path::PathBuf;
 use std::process::exit;
 use async_recursion::async_recursion;
@@ -22,11 +24,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
 
-    let url_test = env::args().collect::<Vec<_>>();
+    let mut url_test = env::args().collect::<Vec<_>>();
 
     if url_test.len() != 2{
         println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-        exit(0);
+        url_test.push("https://neko-sama.fr/anime/info/3458-hagane-no-renkinjutsushi-fullmetal-alchemist_vostfr".to_string());
+        // exit(0);
     }
 
     fs::create_dir_all(&extract_path)?;
@@ -176,30 +179,26 @@ fn download_build_video(path: &str, name: String) {
 }
 
 #[async_recursion]
-async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str) -> Result<HashMap<String, String>, Box<dyn Error>>  {
+async fn recursive_find_url(driver: &WebDriver, url_test: &str, base_url: &str) -> Result<HashMap<String, String>, Box<dyn Error>>  {
 
     let mut episod_url = HashMap::new();
+    let mut all_l = vec![];
 
-    let all_links = get_all_link_base(&driver).await?;
-    for s in all_links {
+    loop {
+        all_l.extend(get_all_link_base(&driver).await?);
+        let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
+
+        if !n.first().expect("first").attr("class").await?.expect("euh").contains("disabled"){
+            println!("Next page");
+            driver.execute(r#"document.querySelector('.animeps-next-page').click();"#, vec![]).await?;
+        }else { break }
+    }
+
+    for s in all_l {
         driver.goto(format!("{base_url}{s}")).await?;
         let video_url = get_video_url(&driver).await?;
         episod_url.insert(driver.title().await?.replace(" - Neko Sama", ""), video_url);
     }
-
-
-    // driver.goto(url_test).await?;
-    // let n = driver.find_all(By::ClassName("animeps-next-page disabled")).await?;
-    // println!("{:?}", n.len());
-    // if n.len() == 0 {
-    //     if let Some(next) = n.first() {
-    //         driver.execute(r#"document.querySelector('.animeps-next-page').click();"#, vec![]).await?;
-//
-    //         episod_url.extend(recursive_find_url(driver, url_test, base_url).await?);
-    //     }
-//
-    // }
-
     Ok(episod_url)
 }
 
