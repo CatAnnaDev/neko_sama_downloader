@@ -6,6 +6,9 @@ use std::{
     time::Instant,
     {fs, io},
 };
+use std::sync::mpsc;
+use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::Client;
 use thirtyfour::{common::capabilities::chrome::ChromeCapabilities, WebDriver};
 
 mod html_parser;
@@ -93,6 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
+	let client = Client::builder().build()?;
     let _ = Command::new("./utils/chromedriver.exe")
         .arg("--port=4444")
         .spawn()?;
@@ -103,6 +107,7 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
     prefs
         .add_extension(Path::new(r#"./utils/uBlock-Origin.crx"#))
         .expect("can't install ublock origin");
+
     let driver = WebDriver::new("http://localhost:4444", prefs).await?;
     driver.goto(url_test.last().unwrap()).await?;
 
@@ -134,19 +139,32 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
             html_parser::fetch_url(
                 x.json()["file"].as_str().unwrap(),
                 &_name.trim().replace(":", ""),
+                &client
             )
             .await?;
         }
     }
 
+    //driver.close_window().await?;
+
+    let progress_bar = ProgressBar::new(episod_url.len() as u64);
+
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta})")?
+            .progress_chars("#>-"),
+    );
+
+    let (tx, rx)= mpsc::channel();
+
     let paths = fs::read_dir(TMP_DL)?;
     let handles: Vec<_> = paths
         .filter_map(|entry| {
+            let tx = tx.clone();
             let entry = entry.ok();
             let file_path = entry?.path();
             if file_path.is_file() {
                 let output_path = Path::new(TMP_DL).join(file_path.file_name()?);
-                println!("Added to process: {:?}", &file_path.file_name().unwrap());
                 let name = format!(
                     "./{}/{}.mp4",
                     save_path.clone(),
@@ -158,16 +176,19 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
                         .replace(".m3u8", "")
                 );
                 Some(std::thread::spawn(move || {
-                    web::download_build_video(
-                        &output_path.to_str().unwrap().to_string().as_str(),
-                        name,
-                    )
+                    tx.send(web::download_build_video(&output_path.to_str().unwrap().to_string().as_str(), name, ))
                 }))
             } else {
                 None
             }
         })
         .collect();
+
+    drop(tx);
+
+    for _ in rx.iter().take(episod_url.len()) {
+        progress_bar.inc(1);
+    }
 
     for handle in handles {
         handle.join().ok();
@@ -182,6 +203,7 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
         elapsed.as_secs(),
         episod_url.len()
     );
+
     Ok(())
 }
 

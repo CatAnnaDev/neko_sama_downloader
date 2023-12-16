@@ -18,7 +18,13 @@ pub async fn recursive_find_url(
     let mut episode_url = HashMap::new();
     let mut all_l = vec![];
 
-    loop {
+    let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
+
+    if n.len() == 0{
+        all_l.extend(get_all_link_base(&driver).await?);
+    }
+
+    while n.len() !=0 {
         all_l.extend(get_all_link_base(&driver).await?);
         let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
         if !n
@@ -71,8 +77,7 @@ pub async fn get_video_url(driver: &WebDriver) -> Result<String, Box<dyn Error>>
     Ok(String::from(""))
 }
 
-pub async fn fetch_url(url: &str, file_name: &str) -> Result<(), Box<dyn Error>> {
-    let client = Client::builder().build()?;
+pub async fn fetch_url(url: &str, file_name: &str, client: &Client) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await?;
     if body.status().is_success() {
         let split = body

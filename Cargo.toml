@@ -9,7 +9,7 @@ edition = "2021"
 reqwest = { version = "0.11.22", features = ["blocking"] }
 tokio = { version = "1.33.0", features = ["full"] }
 futures = "0.3.29"
-async-recursion = "*"
 thirtyfour = "*"
 zip-extract = "*"
-sevenz-rust= "0.5.4"
+sevenz-rust = "0.5.4"
+indicatif = "0.17.0"

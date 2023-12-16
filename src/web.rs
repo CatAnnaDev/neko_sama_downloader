@@ -2,13 +2,13 @@ use std::process::Command;
 
 use reqwest::{Client, Response};
 
-pub fn download_build_video(path: &str, name: String) {
+pub fn download_build_video(path: &str, name: String) -> i8 {
     let _ = Command::new("./utils/ffmpeg")
         .args([
             "-protocol_whitelist",
             "file,http,https,tcp,tls,crypto",
             "-i",
-            { path },
+            path,
             "-acodec",
             "copy",
             "-bsf:a",
@@ -19,8 +19,7 @@ pub fn download_build_video(path: &str, name: String) {
         ])
         .output()
         .unwrap();
-
-    println!("Done: {}", name)
+	1
 }
 
 pub async fn web_request(client: &Client, url: &str) -> Result<Response, reqwest::Error> {
