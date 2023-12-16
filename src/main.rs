@@ -1,6 +1,5 @@
 use std::{{fs, io}, collections::HashMap, env, error::Error, fs::File, path::Path, process::Command, time::Instant};
-use std::fmt::format;
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use async_recursion::async_recursion;
@@ -23,7 +22,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
 
-    let mut url_test = env::args().collect::<Vec<_>>();
+    let url_test = env::args().collect::<Vec<_>>();
 
     if url_test.len() != 2{
         println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
@@ -53,18 +52,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
             start(&url_test).await?;
             break;
         }else if !ffmpeg_check && chrome_check {
-            download_and_extract_archive(ffmpeg_url, &ffmpeg_destination, &extract_path, &url_test).await.expect("Erreur lors du téléchargement de FFmpeg.");
+            download_and_extract_archive(ffmpeg_url, &ffmpeg_destination, &extract_path).await.expect("Erreur lors du téléchargement de FFmpeg.");
         }else if !chrome_check && ffmpeg_check {
-            download_and_extract_archive(chrome_url, &chrome_destination, &extract_path, &url_test).await.expect("Erreur lors du téléchargement de Chrome.");
+            download_and_extract_archive(chrome_url, &chrome_destination, &extract_path).await.expect("Erreur lors du téléchargement de Chrome.");
         }else {
-            download_and_extract_archive(chrome_url, &chrome_destination, &extract_path, &url_test).await.expect("Erreur lors du téléchargement de Chrome.");
-            download_and_extract_archive(ffmpeg_url, &ffmpeg_destination, &extract_path, &url_test).await.expect("Erreur lors du téléchargement de FFmpeg.");
+            download_and_extract_archive(chrome_url, &chrome_destination, &extract_path).await.expect("Erreur lors du téléchargement de Chrome.");
+            download_and_extract_archive(ffmpeg_url, &ffmpeg_destination, &extract_path).await.expect("Erreur lors du téléchargement de FFmpeg.");
         }
     }
     Ok(())
 }
 
-async fn download_and_extract_archive(url: &str, destination: &PathBuf, extract_path: &PathBuf, url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
+async fn download_and_extract_archive(url: &str, destination: &PathBuf, extract_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     println!("Download: {url}");
     let response = Client::new().get(url).send().await?;
     let archive_bytes = response.bytes().await?.to_vec();
