@@ -27,8 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if url_test.len() != 2{
         println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-        url_test.push("https://neko-sama.fr/anime/info/5821-sword-art-online_vf".to_string());
-        //exit(0);
+        exit(0);
     }
 
     fs::create_dir_all(&extract_path)?;
