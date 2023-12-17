@@ -14,12 +14,31 @@ use thirtyfour::{common::capabilities::chrome::ChromeCapabilities, WebDriver};
 mod html_parser;
 mod utils_check;
 mod web;
+mod vlc_playlist_builder;
 
 const TMP_DL: &str = "./tmp";
 
+#[cfg(target_os = "macos")]
+#[cfg(target_arch = "x86_64")]
+static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-x64/chromedriver-mac-x64.zip";
+
+#[cfg(target_os = "macos")]
+#[cfg(target_arch = "arm")]
+static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-arm64/chromedriver-mac-arm64.zip";
+
+#[cfg(target_os = "linux")]
+static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/linux64/chromedriver-linux64.zip";
+
+#[cfg(target_os = "windows")]
+static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
+
+// 120.0.6099.110
+
+// https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let chrome_url = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
+
     let ffmpeg_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z";
 
     let chrome_destination = PathBuf::from("./utils/chrome-win64.zip");
@@ -69,7 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("Erreur lors du téléchargement de FFmpeg.");
         } else if !chrome_check && ffmpeg_check {
             utils_check::download_and_extract_archive(
-                chrome_url,
+                DRIVER_PATH,
                 &chrome_destination,
                 &extract_path,
             )
@@ -77,7 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("Erreur lors du téléchargement de Chrome.");
         } else {
             utils_check::download_and_extract_archive(
-                chrome_url,
+                DRIVER_PATH,
                 &chrome_destination,
                 &extract_path,
             )
@@ -123,11 +142,9 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
     );
     fs::create_dir_all(save_path.clone())?;
     fs::create_dir_all(TMP_DL)?;
-    let episod_url =
-        html_parser::recursive_find_url(&driver, url_test.last().unwrap(), base_url).await?;
-    println!("dump url\n{:#?}", episod_url);
-    println!("total found: {}", episod_url.len());
-    for (_name, url) in episod_url.clone() {
+    let episode_url = html_parser::recursive_find_url(&driver, url_test.last().unwrap(), base_url).await?;
+    println!("total found: {}", episode_url.len());
+    for (_name, url) in episode_url.clone() {
         if url.starts_with("http") {
             driver.goto(url).await?;
             let x = driver
@@ -147,7 +164,7 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
 
     //driver.close_window().await?;
 
-    let progress_bar = ProgressBar::new(episod_url.len() as u64);
+    let progress_bar = ProgressBar::new(episode_url.len() as u64);
 
     progress_bar.set_style(
         ProgressStyle::default_bar()
@@ -186,7 +203,7 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
 
     drop(tx);
 
-    for _ in rx.iter().take(episod_url.len()) {
+    for _ in rx.iter().take(episode_url.len()) {
         progress_bar.inc(1);
     }
 
@@ -201,7 +218,7 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
     println!(
         "Done in: {}s for {} episodes",
         elapsed.as_secs(),
-        episod_url.len()
+        episode_url.len()
     );
 
     Ok(())
