@@ -5,6 +5,13 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+opt-level = "z"
+
+[profile.release.package."*"]
+codegen-units = 1
+opt-level = "z"
+
 [dependencies]
 reqwest = { version = "0.11.22", features = ["blocking"] }
 tokio = { version = "1.33.0", features = ["full"] }
@@ -13,3 +20,5 @@ thirtyfour = "*"
 zip-extract = "*"
 sevenz-rust = "0.5.4"
 indicatif = "0.17.0"
+quick-xml = { version = "0.31.0", features = [] }
+regex = "1.10.2"
