@@ -1,7 +1,7 @@
-use std::process::Command;
 use reqwest::{Client, Response};
+use std::process::Command;
 
-pub fn download_build_video(path: &str, name: String) -> i8 {
+pub fn download_build_video(path: &str, name: String) -> i16 {
     let _ = Command::new("./utils/ffmpeg")
         .args([
             "-protocol_whitelist",
@@ -18,7 +18,7 @@ pub fn download_build_video(path: &str, name: String) -> i8 {
         ])
         .output()
         .unwrap();
-	1
+    1
 }
 
 pub async fn web_request(client: &Client, url: &str) -> Result<Response, reqwest::Error> {

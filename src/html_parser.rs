@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io;
@@ -14,18 +13,20 @@ pub async fn recursive_find_url(
     driver: &WebDriver,
     _url_test: &str,
     base_url: &str,
-) -> Result<HashMap<String, String>, Box<dyn Error>> {
-    let mut episode_url = HashMap::new();
+) -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    let mut episode_url = Vec::new();
     let mut all_l = vec![];
 
     let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
 
-    if n.len() == 0{
+    if n.len() == 0 {
         all_l.extend(get_all_link_base(&driver).await?);
     }
 
-    while n.len() !=0 {
+    while n.len() != 0 {
+
         all_l.extend(get_all_link_base(&driver).await?);
+
         let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
         if !n
             .first()
@@ -50,7 +51,7 @@ pub async fn recursive_find_url(
     for s in all_l {
         driver.goto(format!("{base_url}{s}")).await?;
         let video_url = get_video_url(&driver).await?;
-        episode_url.insert(driver.title().await?.replace(" - Neko Sama", ""), video_url);
+        episode_url.push((driver.title().await?.replace(" - Neko Sama", ""), video_url));
     }
     Ok(episode_url)
 }
@@ -59,9 +60,10 @@ pub async fn get_all_link_base(driver: &WebDriver) -> Result<Vec<String>, Box<dy
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
-    if play_class.len() == 0{
+    if play_class.len() == 0 {
         play_class = driver.find_all(By::ClassName("text-left")).await?;
     }
+
     for x in play_class {
         if let Some(url) = x.attr("href").await? {
             url_found.push(url)
