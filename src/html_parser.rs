@@ -1,13 +1,12 @@
 use std::error::Error;
 use std::fs::File;
 use std::io;
+use std::path::PathBuf;
 
 use reqwest::Client;
 use thirtyfour::{By, WebDriver};
 
 use crate::web;
-
-const TMP_DL: &str = "./tmp";
 
 pub async fn recursive_find_url(
     driver: &WebDriver,
@@ -83,7 +82,7 @@ pub async fn get_video_url(driver: &WebDriver) -> Result<String, Box<dyn Error>>
     Ok(String::from(""))
 }
 
-pub async fn fetch_url(url: &str, file_name: &str, client: &Client) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_url(url: &str, file_name: &str,tmp_dl: &PathBuf, client: &Client) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await?;
     if body.status().is_success() {
         let split = body
@@ -94,7 +93,7 @@ pub async fn fetch_url(url: &str, file_name: &str, client: &Client) -> Result<()
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
         let mut out =
-            File::create(format!("{TMP_DL}/{file_name}.m3u8")).expect("failed to create file");
+            File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap())).expect("failed to create file");
         let link = &split[2];
         io::copy(
             &mut web::web_request(&client, link)

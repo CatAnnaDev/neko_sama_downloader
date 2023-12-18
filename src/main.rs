@@ -1,40 +1,35 @@
-use crate::thread_pool::ThreadPool;
-use indicatif::{ProgressBar, ProgressStyle};
-use regex::Regex;
-use reqwest::Client;
-use std::sync::mpsc;
-use std::{
-    env,
-    error::Error,
-    path::{Path, PathBuf},
-    process::{exit, Command},
-    time::Instant,
-    {fs, io},
-};
-use std::time::Duration;
+use std::{env, error::Error, path::{Path, PathBuf}, process::{exit, Command}, time::Instant, {fs, io},sync::mpsc,time::Duration};
 use thirtyfour::{common::capabilities::chrome::ChromeCapabilities, WebDriver};
+use indicatif::{ProgressBar, ProgressStyle};
+use crate::thread_pool::ThreadPool;
+use reqwest::Client;
+use regex::Regex;
 
+mod vlc_playlist_builder;
 mod html_parser;
 mod thread_pool;
 mod utils_check;
-mod vlc_playlist_builder;
 mod web;
 
-const TMP_DL: &str = "./tmp";
+const THREADNB: usize = 5;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
-static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-x64/chromedriver-mac-x64.zip";
+static DRIVER_PATH: &str =
+    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-x64/chromedriver-mac-x64.zip";
 
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "arm")]
-static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-arm64/chromedriver-mac-arm64.zip";
+static DRIVER_PATH: &str =
+    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-arm64/chromedriver-mac-arm64.zip";
 
 #[cfg(target_os = "linux")]
-static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/linux64/chromedriver-linux64.zip";
+static DRIVER_PATH: &str =
+    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/linux64/chromedriver-linux64.zip";
 
 #[cfg(target_os = "windows")]
-static DRIVER_PATH: &str = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
+static DRIVER_PATH: &str =
+    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
 
 static UBLOCK_PATH: &str =
     "https://github.com/PsykoDev/neko_sama_downloader/raw/main/utils/uBlock-Origin.crx";
@@ -45,23 +40,32 @@ static UBLOCK_PATH: &str =
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
+    let binding = env::current_exe()?;
+    let exe_path = binding.parent().unwrap();
+
     let ffmpeg_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z";
 
-    let chrome_destination = PathBuf::from("./utils/chrome-win64.zip");
-    let ffmpeg_destination = PathBuf::from("./utils/ffmpeg-git-essentials.7z");
-    let ublock_destination = PathBuf::from("./utils/uBlock-Origin.crx");
-    let extract_path = PathBuf::from("./utils");
+    let chrome_destination = exe_path.join(PathBuf::from("utils/chrome-win64.zip"));
+    let ffmpeg_destination = exe_path.join(PathBuf::from("utils/ffmpeg-git-essentials.7z"));
+    let ublock_destination = exe_path.join(PathBuf::from("utils/uBlock-Origin.crx"));
+    let extract_path =       exe_path.join(PathBuf::from("utils/"));
+    let tmp_dl =             exe_path.join(PathBuf::from("tmp/"));
+    let chrome_path =        extract_path.join(PathBuf::from("chromedriver.exe"));
+    let u_block_path =       extract_path.join(PathBuf::from("uBlock-Origin.crx"));
+    let ffmpeg_path =        extract_path.join(PathBuf::from("ffmpeg.exe"));
 
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
     let mut ublock_check = false;
 
-    let url_test = env::args().collect::<Vec<_>>();
+    let url_test = env::args().nth(1).expect("Missing Arg");
 
-    if url_test.len() != 2 {
+    if url_test.is_empty() {
         println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-        //url_test.push("https://neko-sama.fr/anime/info/3458-hagane-no-renkinjutsushi-fullmetal-alchemist_vostfr".to_string());
         exit(0);
+    }else if !url_test.contains("https://neko-sama.fr/") {
+        println!("ONLY https://neko-sama.fr/ work actually")
     }
 
     fs::create_dir_all(&extract_path)?;
@@ -85,8 +89,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        println!("chromedriver is present ? {chrome_check}");
-        println!("ffmpeg is present ? {ffmpeg_check}");
+        println!("chromedriver is present\t ? {chrome_check}");
+        println!("ffmpeg is present\t ? {ffmpeg_check}");
         println!("uBlock Origin is present ? {ublock_check}");
 
         if !ublock_check {
@@ -100,7 +104,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if ffmpeg_check && chrome_check && ublock_check {
-            start(&url_test).await?;
+            start(&url_test, exe_path, &tmp_dl, &chrome_path, &u_block_path, &ffmpeg_path).await?;
             break;
         } else if !ffmpeg_check && chrome_check {
             utils_check::download_and_extract_archive(
@@ -138,75 +142,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
+async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &PathBuf, ublock: &PathBuf, ffmpeg: &PathBuf) -> Result<(), Box<dyn Error>> {
 
-    let pool = ThreadPool::new(1); // 20 threads for 1Gb/s fiber
+    let pool = ThreadPool::new(THREADNB);
 
     let client = Client::builder().build()?;
 
-    let _ = Command::new("./utils/chromedriver.exe").arg("--port=4444").spawn()?;
+    let _ = Command::new(chrome).arg("--port=4444").spawn()?;
 
     let before = Instant::now();
+
     let mut save_path = String::new();
+
     let base_url = "https://neko-sama.fr";
+
     let mut prefs = ChromeCapabilities::new();
     prefs
-        .add_extension(Path::new(r#"./utils/uBlock-Origin.crx"#))
+        .add_extension(ublock)
         .expect("can't install ublock origin");
 
     let driver = WebDriver::new("http://localhost:4444", prefs).await?;
+    driver.minimize_window().await?;
 
     driver.set_page_load_timeout(Duration::from_secs(20)).await?;
-    driver.set_implicit_wait_timeout(Duration::from_secs(20)).await?;
 
-    if let Some(last) = url_test.last() {
-        driver.goto(last).await?;
-    }
+    driver.goto(url_test).await?;
 
     println!("Scan Main Page");
 
-    save_path.push_str(
-        driver
-            .title()
-            .await?
-            .replace(" - Neko Sama", "")
-            .replace(":", "")
-            .as_str(),
-    );
-    fs::create_dir_all(edit_for_windows_compatibility(&save_path.clone()))?;
-    fs::create_dir_all(TMP_DL)?;
-    let mut episode_url = html_parser::recursive_find_url(&driver, url_test.last().unwrap(), base_url).await?;
+    let episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
 
-    println!("\ntotal found: {}", &episode_url.len());
+    println!("total found: {}", &episode_url.len());
 
-    for (name, url) in &episode_url {
-        if url.starts_with("http") {
+    let _ = get_real_video_link(&episode_url, &driver, &client, &tmp_dl).await?;
 
-            driver.goto(&url).await?;
-            println!("Get m3u8 for: {}", name);
-
-            if let Ok(script) = driver
-                .execute(
-                    r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#,
-                    vec![],
-                )
-                .await
-            {
-                if let Some(url) = script.json()["file"].as_str() {
-                    html_parser::fetch_url(url, &name.trim().replace(":", ""), &client).await?;
-                }
-
-            }else {
-                println!("Can't get .m3u8 {url}")
-            }
-        }else {
-            println!("not http");
-        }
-    }
-
-    println!("Start Processing");
+    println!("Start Processing with {} threads", THREADNB);
 
     let progress_bar = ProgressBar::new(episode_url.len() as u64);
+    progress_bar.enable_steady_tick(Duration::from_secs(1));
 
     progress_bar.set_style(
         ProgressStyle::default_bar()
@@ -216,31 +189,28 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
 
     let (tx, rx) = mpsc::channel();
 
-    let paths = fs::read_dir(TMP_DL)?;
-
-    let _: Vec<_>  = paths
+    let _: Vec<_>  = fs::read_dir(tmp_dl)?
         .filter_map(|entry| {
+
             let tx = tx.clone();
+            let ffmpeg = ffmpeg.clone();
             let entry = entry.ok();
             let file_path = entry?.path();
+
             if file_path.is_file() {
-                let output_path = Path::new(TMP_DL).join(file_path.file_name()?);
+                let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
+
                 let name = format!(
-                    "./{}/{}.mp4",
-                    save_path.clone(),
-                    edit_for_windows_compatibility(
-                        &file_path
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .replace(".m3u8", "")
-                    )
-                );
+                    "{}\\{}\\{}",
+                    exe_path.display(),
+                    save_path,
+                    edit_for_windows_compatibility(&file_path.file_name().unwrap().to_str().unwrap().replace(".m3u8",".mp4")));
+
                 Some(pool.execute(move || {
                     tx.send(web::download_build_video(
                         &output_path.to_str().unwrap(),
                         name,
+                        &ffmpeg
                     ))
                     .expect("Error TX Send")
                 }))
@@ -251,7 +221,6 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
         .collect();
 
     drop(tx);
-    progress_bar.inc(0); // force progress bar to appear before 1st finish
 
     for _ in rx.iter().take(episode_url.len()) {
         progress_bar.inc(1);
@@ -259,26 +228,69 @@ async fn start(url_test: &Vec<String>) -> Result<(), Box<dyn Error>> {
 
     driver.close_window().await?;
     println!("Clean !");
-    remove_dir_contents(TMP_DL)?;
+    remove_dir_contents(tmp_dl)?;
+
 
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
     let hours = (before.elapsed().as_secs() / 60) / 60;
 
+    let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+
+
     println!(
-        "Done in: {:02}:{:02}:{:02}secs for {} episodes",
-        hours,
-        minutes,
-        seconds,
+        "Done in: {} for {} episodes",
+        time,
         episode_url.len()
     );
+
 
     Ok(())
 }
 
+async fn scan_main_page(save_path: &mut String, driver: &WebDriver, url_test: &str, base_url: &str, tmp_dl: &PathBuf) -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    fs::create_dir_all(tmp_dl)?;
+
+    save_path.push_str(
+        &edit_for_windows_compatibility(
+            &driver.title().await?.replace(" - Neko Sama", "")
+        )
+    );
+
+    fs::create_dir_all(tmp_dl.parent().unwrap().join(save_path))?;
+
+    Ok(html_parser::recursive_find_url(&driver, url_test, base_url).await?)
+}
+
+async fn get_real_video_link(episode_url: &Vec<(String, String)>, driver: &WebDriver, client: &Client, tmp_dl: &PathBuf) -> Result<(), Box<dyn Error>> {
+
+    for (name, url) in episode_url {
+        if url.starts_with("http") {
+
+            driver.goto(&url).await?;
+            println!("Get m3u8 for: {}", name);
+
+            if let Ok(script) = driver.execute(r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#, vec![],).await
+            {
+                if let Some(url) = script.json()["file"].as_str() {
+                    html_parser::fetch_url(url, &name.trim().replace(":", ""), &tmp_dl, &client).await?;
+                }
+
+            }else {
+                println!("Can't get .m3u8 {url}")
+            }
+        }else {
+            println!("not http");
+        }
+    }
+
+    Ok(())
+
+}
+
 fn edit_for_windows_compatibility(name: &str) -> String {
     let regex = Regex::new(r#"[\\/?%*:|"<>]+"#).unwrap();
-    regex.replace_all(name, "_").to_string()
+    regex.replace_all(name, "").to_string()
 }
 fn remove_dir_contents<P: AsRef<Path>>(path: P) -> io::Result<()> {
     for entry in fs::read_dir(path)? {

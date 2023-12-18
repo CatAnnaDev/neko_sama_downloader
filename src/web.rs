@@ -1,8 +1,9 @@
+use std::path::PathBuf;
 use reqwest::{Client, Response};
 use std::process::Command;
 
-pub fn download_build_video(path: &str, name: String) -> i16 {
-    let _ = Command::new("./utils/ffmpeg")
+pub fn download_build_video(path: &str, name: String, ffmpeg: &PathBuf) -> i16 {
+    let _ = Command::new(ffmpeg)
         .args([
             "-protocol_whitelist",
             "file,http,https,tcp,tls,crypto",
@@ -16,8 +17,7 @@ pub fn download_build_video(path: &str, name: String) -> i16 {
             "copy",
             &name,
         ])
-        .output()
-        .unwrap();
+	    .output().unwrap();
     1
 }
 
