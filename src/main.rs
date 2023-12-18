@@ -11,8 +11,6 @@ mod thread_pool;
 mod utils_check;
 mod web;
 
-const THREADNB: usize = 5;
-
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
 static DRIVER_PATH: &str =
@@ -59,7 +57,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut ffmpeg_check = false;
     let mut ublock_check = false;
 
-    let url_test = env::args().nth(1).expect("Missing Arg");
+    let args: Vec<_> = env::args().collect::<_>();
+    let url_test = args.iter().nth(1).expect("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
+    let thread = args.iter().nth(2).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+
 
     if url_test.is_empty() {
         println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
@@ -104,7 +105,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if ffmpeg_check && chrome_check && ublock_check {
-            start(&url_test, exe_path, &tmp_dl, &chrome_path, &u_block_path, &ffmpeg_path).await?;
+            start(&url_test, exe_path, &tmp_dl, &chrome_path, &u_block_path, &ffmpeg_path, thread).await?;
             break;
         } else if !ffmpeg_check && chrome_check {
             utils_check::download_and_extract_archive(
@@ -142,9 +143,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &PathBuf, ublock: &PathBuf, ffmpeg: &PathBuf) -> Result<(), Box<dyn Error>> {
+async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &PathBuf, ublock: &PathBuf, ffmpeg: &PathBuf, thread: usize) -> Result<(), Box<dyn Error>> {
 
-    let pool = ThreadPool::new(THREADNB);
+    let pool = ThreadPool::new(thread);
 
     let client = Client::builder().build()?;
 
@@ -176,7 +177,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     let _ = get_real_video_link(&episode_url, &driver, &client, &tmp_dl).await?;
 
-    println!("Start Processing with {} threads", THREADNB);
+    println!("Start Processing with {} threads", thread);
 
     let progress_bar = ProgressBar::new(episode_url.len() as u64);
     progress_bar.enable_steady_tick(Duration::from_secs(1));
@@ -226,6 +227,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
         progress_bar.inc(1);
     }
 
+    progress_bar.finish();
     driver.close_window().await?;
     println!("Clean !");
     remove_dir_contents(tmp_dl)?;
