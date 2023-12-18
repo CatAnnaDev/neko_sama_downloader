@@ -5,13 +5,14 @@ use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 
 use reqwest::Client;
+use crate::info;
 
 pub async fn download_and_extract_archive(
     url: &str,
     destination: &PathBuf,
     extract_path: &PathBuf,
 ) -> Result<(), Box<dyn Error>> {
-    println!("Download: {url}");
+    info!("Download: {url}");
     let response = Client::new().get(url).send().await?;
     let archive_bytes = response.bytes().await?.to_vec();
 

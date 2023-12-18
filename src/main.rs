@@ -10,6 +10,7 @@ mod html_parser;
 mod thread_pool;
 mod utils_check;
 mod web;
+mod log_color;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
@@ -63,10 +64,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 
     if url_test.is_empty() {
-        println!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
+        warn!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
         exit(0);
     }else if !url_test.contains("https://neko-sama.fr/") {
-        println!("ONLY https://neko-sama.fr/ work actually")
+        warn!("ONLY https://neko-sama.fr/ work actually")
     }
 
     fs::create_dir_all(&extract_path)?;
@@ -90,9 +91,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        println!("chromedriver is present\t ? {chrome_check}");
-        println!("ffmpeg is present\t ? {ffmpeg_check}");
-        println!("uBlock Origin is present ? {ublock_check}");
+        info!("chromedriver is present\t ? {chrome_check}");
+        info!("ffmpeg is present\t ? {ffmpeg_check}");
+        info!("uBlock Origin is present ? {ublock_check}");
 
         if !ublock_check {
             utils_check::download_and_extract_archive(
@@ -169,15 +170,15 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     driver.goto(url_test).await?;
 
-    println!("Scan Main Page");
+    info!("Scan Main Page");
 
     let episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
 
-    println!("total found: {}", &episode_url.len());
+    info!("total found: {}", &episode_url.len());
 
     let _ = get_real_video_link(&episode_url, &driver, &client, &tmp_dl).await?;
 
-    println!("Start Processing with {} threads", thread);
+    info!("Start Processing with {} threads", thread);
 
     let progress_bar = ProgressBar::new(episode_url.len() as u64);
     progress_bar.enable_steady_tick(Duration::from_secs(1));
@@ -229,9 +230,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     progress_bar.finish();
     driver.close_window().await?;
-    println!("Clean !");
+    info!("Clean tmp dir!");
     remove_dir_contents(tmp_dl)?;
-
 
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
@@ -239,13 +239,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
 
-
-    println!(
-        "Done in: {} for {} episodes",
-        time,
-        episode_url.len()
-    );
-
+    info!("Done in: {} for {} episodes",time,episode_url.len());
 
     Ok(())
 }
@@ -270,7 +264,7 @@ async fn get_real_video_link(episode_url: &Vec<(String, String)>, driver: &WebDr
         if url.starts_with("http") {
 
             driver.goto(&url).await?;
-            println!("Get m3u8 for: {}", name);
+            info!("Get m3u8 for: {}", name);
 
             if let Ok(script) = driver.execute(r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#, vec![],).await
             {
@@ -279,10 +273,10 @@ async fn get_real_video_link(episode_url: &Vec<(String, String)>, driver: &WebDr
                 }
 
             }else {
-                println!("Can't get .m3u8 {url}")
+                error!("Can't get .m3u8 {url}")
             }
         }else {
-            println!("not http");
+            error!("Error with: {name} url: {url}");
         }
     }
 

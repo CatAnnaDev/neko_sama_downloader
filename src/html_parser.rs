@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use reqwest::Client;
 use thirtyfour::{By, WebDriver};
 
-use crate::web;
+use crate::{error, info, web};
 
 pub async fn recursive_find_url(
     driver: &WebDriver,
@@ -35,7 +35,7 @@ pub async fn recursive_find_url(
             .expect("euh")
             .contains("disabled")
         {
-            println!("Next page");
+            info!("Next page");
             driver
                 .execute(
                     r#"document.querySelector('.animeps-next-page').click();"#,
@@ -105,7 +105,7 @@ pub async fn fetch_url(url: &str, file_name: &str,tmp_dl: &PathBuf, client: &Cli
         )
         .expect("Error copy");
     } else {
-        println!("Error 404")
+        error!("Error 404")
     }
     Ok(())
 }
