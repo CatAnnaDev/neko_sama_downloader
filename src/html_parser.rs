@@ -16,6 +16,14 @@ pub async fn recursive_find_url(
     let mut episode_url = Vec::new();
     let mut all_l = vec![];
 
+
+    if _url_test.contains("/episode/"){
+        driver.goto(_url_test).await?;
+        let video_url = get_video_url(&driver).await?;
+        episode_url.push((driver.title().await?.replace(" - Neko Sama", ""), video_url));
+        return Ok(episode_url);
+    }
+
     let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
 
     if n.len() == 0 {

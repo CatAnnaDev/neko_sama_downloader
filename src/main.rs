@@ -213,8 +213,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
                         &output_path.to_str().unwrap(),
                         name,
                         &ffmpeg
-                    ))
-                    .expect("Error TX Send")
+                    )).unwrap_or(())
                 }))
             } else {
                 None
@@ -232,7 +231,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
     driver.close_window().await?;
     info!("Clean tmp dir!");
     remove_dir_contents(tmp_dl)?;
-
+    info!("drop pool");
+    drop(pool);
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
     let hours = (before.elapsed().as_secs() / 60) / 60;
@@ -289,12 +289,6 @@ fn edit_for_windows_compatibility(name: &str) -> String {
     regex.replace_all(name, "").to_string()
 }
 fn remove_dir_contents<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    for entry in fs::read_dir(path)? {
-        if let Ok(x) = entry {
-            if x.file_name().to_str().unwrap().ends_with(".m3u8") {
-                fs::remove_file(x.path())?;
-            }
-        }
-    }
+    fs::remove_dir_all(path)?;
     Ok(())
 }
