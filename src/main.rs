@@ -41,6 +41,9 @@ static UBLOCK_PATH: &str =
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
+
+
     let binding = env::current_exe()?;
     let exe_path = binding.parent().unwrap();
 
@@ -199,8 +202,11 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     let mut pool = ThreadPool::new(thread, episode_url.len());
 
+    let mut save_path_vlc = vec![];
+
     let _: Vec<_> = fs::read_dir(tmp_dl)?
         .filter_map(|entry| {
+            let save = &mut save_path_vlc;
             let tx = tx.clone();
             let ffmpeg = ffmpeg.clone();
             let entry = entry.ok();
@@ -210,6 +216,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
                 let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
 
                 let name = exe_path.join(&save_path).join(edit_for_windows_compatibility(&file_path.file_name().unwrap().to_str().unwrap().replace(".m3u8", ".mp4")));
+
+                let _ = &mut save.push((name.clone(), &save_path));
 
                 Some(pool.execute(move || {
                     tx.send(web::download_build_video(
@@ -224,6 +232,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
         })
         .collect();
 
+
+
     drop(tx);
 
     for _ in rx.iter().take(episode_url.len()) {
@@ -234,6 +244,10 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
     driver.close_window().await?;
     info!("Clean tmp dir!");
     remove_dir_contents(tmp_dl)?;
+
+    info!("Build vlc playlist");
+    save_path_vlc.sort();
+    vlc_playlist_builder::new(save_path_vlc)?;
 
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
