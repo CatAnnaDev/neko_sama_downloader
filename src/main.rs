@@ -1,4 +1,6 @@
-use std::{env, error::Error, path::{Path, PathBuf}, process::{exit, Command}, time::Instant, {fs, io},sync::mpsc,time::Duration};
+#![feature(unwrap_infallible)]
+
+use std::{env, error::Error, path::{Path, PathBuf}, process::{exit, Command}, time::Instant, {fs, io}, sync::mpsc, time::Duration};
 use thirtyfour::{common::capabilities::chrome::ChromeCapabilities, WebDriver};
 use indicatif::{ProgressBar, ProgressStyle};
 use crate::thread_pool::ThreadPool;
@@ -43,16 +45,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let binding = env::current_exe()?;
     let exe_path = binding.parent().unwrap();
 
-    let ffmpeg_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z";
+    let ffmpeg_url = "https://evermeet.cx/ffmpeg/ffmpeg-6.1.7z";
 
     let chrome_destination = exe_path.join(PathBuf::from("utils/chrome-win64.zip"));
     let ffmpeg_destination = exe_path.join(PathBuf::from("utils/ffmpeg-git-essentials.7z"));
     let ublock_destination = exe_path.join(PathBuf::from("utils/uBlock-Origin.crx"));
     let extract_path =       exe_path.join(PathBuf::from("utils/"));
     let tmp_dl =             exe_path.join(PathBuf::from("tmp/"));
-    let chrome_path =        extract_path.join(PathBuf::from("chromedriver.exe"));
+    let chrome_path =        extract_path.join(PathBuf::from("chromedriver"));
     let u_block_path =       extract_path.join(PathBuf::from("uBlock-Origin.crx"));
-    let ffmpeg_path =        extract_path.join(PathBuf::from("ffmpeg.exe"));
+    let ffmpeg_path =        extract_path.join(PathBuf::from("ffmpeg"));
 
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
@@ -105,7 +107,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("Erreur lors du téléchargement de uBlock Origin.");
         }
 
-        if ffmpeg_check && chrome_check && ublock_check {
+        if !ffmpeg_check && !chrome_check && ublock_check {
             start(&url_test, exe_path, &tmp_dl, &chrome_path, &u_block_path, &ffmpeg_path, thread).await?;
             break;
         } else if !ffmpeg_check && chrome_check {
@@ -146,7 +148,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &PathBuf, ublock: &PathBuf, ffmpeg: &PathBuf, thread: usize) -> Result<(), Box<dyn Error>> {
 
-    let pool = ThreadPool::new(thread);
 
     let client = Client::builder().build()?;
 
@@ -191,6 +192,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     let (tx, rx) = mpsc::channel();
 
+    let pool = ThreadPool::new(thread, episode_url.len());
+
     let _: Vec<_>  = fs::read_dir(tmp_dl)?
         .filter_map(|entry| {
 
@@ -203,7 +206,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
                 let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
 
                 let name = format!(
-                    "{}\\{}\\{}",
+                    "{}/{}/{}",
                     exe_path.display(),
                     save_path,
                     edit_for_windows_compatibility(&file_path.file_name().unwrap().to_str().unwrap().replace(".m3u8",".mp4")));
@@ -231,8 +234,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
     driver.close_window().await?;
     info!("Clean tmp dir!");
     remove_dir_contents(tmp_dl)?;
-    info!("drop pool");
-    drop(pool);
+
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
     let hours = (before.elapsed().as_secs() / 60) / 60;
@@ -264,16 +266,17 @@ async fn get_real_video_link(episode_url: &Vec<(String, String)>, driver: &WebDr
         if url.starts_with("http") {
 
             driver.goto(&url).await?;
-            info!("Get m3u8 for: {}", name);
+
 
             if let Ok(script) = driver.execute(r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#, vec![],).await
             {
+                info!("Get m3u8 for: {}", name);
                 if let Some(url) = script.json()["file"].as_str() {
                     html_parser::fetch_url(url, &name.trim().replace(":", ""), &tmp_dl, &client).await?;
                 }
 
             }else {
-                error!("Can't get .m3u8 {url}")
+                error!("Can't get .m3u8 {name}")
             }
         }else {
             error!("Error with: {name} url: {url}");

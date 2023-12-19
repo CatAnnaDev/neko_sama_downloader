@@ -22,3 +22,4 @@ sevenz-rust = "0.5.4"
 indicatif = "0.17.0"
 quick-xml = { version = "0.31.0", features = [] }
 regex = "1.10.2"
+crossbeam = "0.8.2"

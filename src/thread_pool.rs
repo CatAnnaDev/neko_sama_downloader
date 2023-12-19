@@ -1,48 +1,46 @@
-use std::{
-    sync::{mpsc, Arc, Mutex},
-    thread,
-};
+use std::sync::Arc;
+use crossbeam::queue::ArrayQueue;
+use std::thread;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: Option<mpsc::Sender<Job>>,
+    queue: Arc<ArrayQueue<Job>>,
 }
 
-type Job = Box<dyn FnOnce() + Send + 'static>;
+pub enum Job {
+    Task(Box<dyn FnOnce() + Send + 'static>),
+    Terminate,
+}
 
 impl ThreadPool {
-    pub fn new(size: usize) -> ThreadPool {
+    pub fn new(size: usize, capa: usize) -> ThreadPool {
         assert!(size > 0);
 
-        let (sender, receiver) = mpsc::channel();
-
-        let receiver = Arc::new(Mutex::new(receiver));
+        let queue = Arc::new(ArrayQueue::<Job>::new(capa));
 
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            workers.push(Worker::new(id, Arc::clone(&receiver)));
+            workers.push(Worker::new(id, Arc::clone(&queue)));
         }
 
-        ThreadPool {
-            workers,
-            sender: Some(sender),
-        }
+        ThreadPool { workers, queue }
     }
 
     pub fn execute<F>(&self, f: F)
-    where
-        F: FnOnce() + Send + 'static,
+        where
+            F: FnOnce() + Send + 'static,
     {
-        let job = Box::new(f);
-
-        self.sender.as_ref().unwrap().send(job).unwrap();
+        let job = Job::Task(Box::new(f));
+        let _ = self.queue.push(job);
     }
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        drop(self.sender.take());
+        for _ in &self.workers {
+            let _ = self.queue.push(Job::Terminate);
+        }
 
         for worker in &mut self.workers {
             if let Some(thread) = worker.thread.take() {
@@ -58,17 +56,12 @@ struct Worker {
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, queue: Arc<ArrayQueue<Job>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv();
-
-            match message {
-                Ok(job) => {
-                    job();
-                }
-                Err(_) => {
-                    break;
-                }
+            match queue.pop() {
+                Some(Job::Task(job)) => job(),
+                Some(Job::Terminate) => break,
+                None => {}
             }
         });
 
