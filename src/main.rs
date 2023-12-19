@@ -243,9 +243,11 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
     info!("Clean tmp dir!");
     remove_dir_contents(tmp_dl)?;
 
-    info!("Build vlc playlist");
-    save_path_vlc.sort();
-    vlc_playlist_builder::new(save_path_vlc)?;
+    if good >= 2 {
+        info!("Build vlc playlist");
+        save_path_vlc.sort();
+        vlc_playlist_builder::new(save_path_vlc)?;
+    }
 
     let seconds = before.elapsed().as_secs() % 60;
     let minutes = (before.elapsed().as_secs() / 60) % 60;
