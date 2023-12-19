@@ -149,6 +149,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &PathBuf, ublock: &PathBuf, ffmpeg: &PathBuf, thread: usize) -> Result<(), Box<dyn Error>> {
 
 
+
     let client = Client::builder().build()?;
 
     let _ = Command::new(chrome).arg("--port=4444").spawn()?;
@@ -177,6 +178,11 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     info!("total found: {}", &episode_url.len());
 
+    if &episode_url.len() == &0usize {
+        driver.close_window().await?;
+        return Ok(());
+    }
+
     let _ = get_real_video_link(&episode_url, &driver, &client, &tmp_dl).await?;
 
     info!("Start Processing with {} threads", thread);
@@ -192,7 +198,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
 
     let (tx, rx) = mpsc::channel();
 
-    let pool = ThreadPool::new(thread, episode_url.len());
+    let mut pool = ThreadPool::new(thread, episode_url.len());
 
     let _: Vec<_>  = fs::read_dir(tmp_dl)?
         .filter_map(|entry| {
@@ -217,6 +223,7 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
                         name,
                         &ffmpeg
                     )).unwrap_or(())
+
                 }))
             } else {
                 None
@@ -229,6 +236,8 @@ async fn start(url_test: &String, exe_path: &Path, tmp_dl: &PathBuf, chrome: &Pa
     for _ in rx.iter().take(episode_url.len()) {
         progress_bar.inc(1);
     }
+
+    drop(pool);
 
     progress_bar.finish();
     driver.close_window().await?;
