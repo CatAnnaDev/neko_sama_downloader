@@ -17,7 +17,7 @@ pub async fn recursive_find_url(
     let mut all_l = vec![];
 
 
-    if _url_test.contains("/episode/"){
+    if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
         let video_url = get_video_url(&driver).await?;
         episode_url.push((driver.title().await?.replace(" - Neko Sama", ""), video_url));
@@ -31,7 +31,6 @@ pub async fn recursive_find_url(
     }
 
     while n.len() != 0 {
-
         all_l.extend(get_all_link_base(&driver).await?);
 
         let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
@@ -90,7 +89,7 @@ pub async fn get_video_url(driver: &WebDriver) -> Result<String, Box<dyn Error>>
     Ok(String::from(""))
 }
 
-pub async fn fetch_url(url: &str, file_name: &str,tmp_dl: &PathBuf, client: &Client) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await?;
     if body.status().is_success() {
         let split = body
@@ -111,7 +110,7 @@ pub async fn fetch_url(url: &str, file_name: &str,tmp_dl: &PathBuf, client: &Cli
                 .as_bytes(),
             &mut out,
         )
-        .expect("Error copy");
+            .expect("Error copy");
     } else {
         error!("Error 404")
     }

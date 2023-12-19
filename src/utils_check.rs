@@ -5,6 +5,7 @@ use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 
 use reqwest::Client;
+
 use crate::info;
 
 pub async fn download_and_extract_archive(

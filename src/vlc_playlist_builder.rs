@@ -1,6 +1,7 @@
-use quick_xml::Writer;
 use std::error::Error;
 use std::fs::File;
+
+use quick_xml::Writer;
 
 pub fn _new() -> Result<(), Box<dyn Error>> {
     let file = File::create("playlist.xml").expect("Impossible de créer le fichier XML");
@@ -13,7 +14,7 @@ pub fn _new() -> Result<(), Box<dyn Error>> {
             ("xmlns:vlc", "http://www.videolan.org/vlc/playlist/ns/0/"),
             ("version", "1"),
         ]
-        .into_iter(),
+            .into_iter(),
     );
 
     Ok(())

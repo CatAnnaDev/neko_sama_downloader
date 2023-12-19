@@ -1,6 +1,7 @@
 use std::sync::Arc;
-use crossbeam::queue::ArrayQueue;
 use std::thread;
+
+use crossbeam::queue::ArrayQueue;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -35,7 +36,7 @@ impl ThreadPool {
         let _ = &self.queue.push(job);
 
         for x in &mut self.workers {
-            if let Some(a) = &x.thread{
+            if let Some(a) = &x.thread {
                 a.thread().unpark()
             }
         }
@@ -44,8 +45,11 @@ impl ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        for _ in &self.workers {
+        for worker in &mut self.workers {
             let _ = self.queue.push(Job::Terminate);
+            if let Some(thread) = worker.thread.take() {
+                thread.thread().unpark();
+            }
         }
 
         for worker in &mut self.workers {
