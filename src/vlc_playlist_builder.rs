@@ -5,7 +5,6 @@ use std::fs::File;
 use std::path::PathBuf;
 
 pub fn new(track: Vec<(PathBuf, &String)>) -> Result<(), Box<dyn Error>> {
-
     let save_path = track.first().unwrap().0.parent().unwrap();
     let save_name = track.first().unwrap().1;
     let file = File::create( format!("{}/{}.xspf", save_path.display(), save_name))?;

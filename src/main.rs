@@ -42,8 +42,6 @@ static UBLOCK_PATH: &str =
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
-
-
     let binding = env::current_exe()?;
     let exe_path = binding.parent().unwrap();
 
