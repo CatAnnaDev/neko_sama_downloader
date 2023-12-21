@@ -17,7 +17,7 @@
  - work on macOS windows linux
 
 # Demo
-- Download season: https://www.youtube.com/watch?v=_ae_MWHWEJQ
+- Download season: https://youtu.be/n_AlCJcqX6Q
 - Download with search: https://youtu.be/mkgSpIDFO6Y
 
 ![](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/fe517de7-d7cc-4657-a03e-79c7f29883fa)
