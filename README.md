@@ -8,10 +8,11 @@ example: ./anime_dl "https://neko-sama.fr/anime/info/8345-kimi-no-na-wa_vf" 5
   - Multi thread to download and process video
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
+  - ublock origin is added by default
 
 # Actual Support
  - only work with " https://neko-sama.fr/ " for now
- - only work with windows for now
+ - work on macOS windows linux
 
 # Demo
  https://www.youtube.com/watch?v=_ae_MWHWEJQ
