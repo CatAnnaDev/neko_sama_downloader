@@ -1,6 +1,6 @@
 #![feature(pattern)]
 use std::{
-    {fs, io},
+    fs,
     env,
     error::Error,
     path::{Path, PathBuf},
@@ -41,6 +41,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let extract_path = exe_path.join(PathBuf::from("utils/"));
     let tmp_dl = exe_path.join(PathBuf::from("tmp/"));
+
+    remove_dir_contents(&tmp_dl);
 
     // chrome driver
     #[cfg(target_os = "macos")]
@@ -337,12 +339,11 @@ async fn start(
     progress_bar.finish();
     driver.close_window().await?;
     info!("Clean tmp dir!");
-    remove_dir_contents(tmp_dl)?;
+    remove_dir_contents(tmp_dl);
 
     if good >= 2 {
         info!("Build vlc playlist");
         custom_sort_vlc(&mut save_path_vlc);
-        println!("{:#?}", save_path_vlc);
         vlc_playlist_builder::new(save_path_vlc)?;
     }
 
@@ -424,22 +425,15 @@ fn custom_sort(vec: &mut Vec<(PathBuf, PathBuf)>) {
     });
 }
 
-fn extract_episode_number(s: &str) -> i32 {
-    s.trim_end_matches(".mp4").split_whitespace()
-        .filter_map(|word| word.parse::<i32>().ok())
-        .last()
-        .unwrap_or(0)
-}
-
 fn custom_sort_vlc(vec: &mut Vec<(PathBuf, &String)>) {
     vec.sort_by(|a, b| {
-        let num_a = extract_episode_number_vlc(&a.0.to_str().unwrap());
-        let num_b = extract_episode_number_vlc(&b.0.to_str().unwrap());
+        let num_a = extract_episode_number(&a.0.to_str().unwrap());
+        let num_b = extract_episode_number(&b.0.to_str().unwrap());
         num_a.cmp(&num_b)
     });
 }
 
-fn extract_episode_number_vlc(s: &str) -> i32 {
+fn extract_episode_number(s: &str) -> i32 {
     s.trim_end_matches(".mp4").split_whitespace()
         .filter_map(|word| word.parse::<i32>().ok())
         .last()
@@ -451,7 +445,8 @@ fn edit_for_windows_compatibility(name: &str) -> String {
     regex.replace_all(name, "").to_string()
 }
 
-fn remove_dir_contents<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    fs::remove_dir_all(path)?;
-    Ok(())
+fn remove_dir_contents<P: AsRef<Path>>(path: P) {
+    if let Ok(_) = fs::remove_dir_all(path){
+
+    }
 }

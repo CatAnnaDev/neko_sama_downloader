@@ -6,7 +6,7 @@
 ```
 
 # Features
-  - Multi thread to download and process video
+  - Multi thread to download and process video 1 thread can download between 3 and 5 mo/s ( limited by website ) so 20 thread is good for 1gb/s fiber
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
   - Can search all seasons by name and download 
