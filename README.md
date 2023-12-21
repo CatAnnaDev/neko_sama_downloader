@@ -1,13 +1,15 @@
 # Usage
 ```txt
-./anime_dl "url" thread_nb ( optional default=1 )
-example: ./anime_dl "https://neko-sama.fr/anime/info/8345-kimi-no-na-wa_vf" 5
+./anime_dl search "anime name" <vf | vostfr> ( optional default=vf ) <thread number> ( optional default=1 )
+./anime_dl download "url" <thread number> ( optional default=1 )
+./anime_dl help
 ```
 
 # Features
   - Multi thread to download and process video
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
+  - Can search all seasons by name and download 
   - ublock origin is added by default
 
 # Actual Support
@@ -15,7 +17,8 @@ example: ./anime_dl "https://neko-sama.fr/anime/info/8345-kimi-no-na-wa_vf" 5
  - work on macOS windows linux
 
 # Demo
- https://www.youtube.com/watch?v=_ae_MWHWEJQ
+- Download season: https://www.youtube.com/watch?v=_ae_MWHWEJQ
+- Download with search: https://youtu.be/mkgSpIDFO6Y
 
 ![](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/fe517de7-d7cc-4657-a03e-79c7f29883fa)
 
