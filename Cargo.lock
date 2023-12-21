@@ -66,6 +66,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sevenz-rust",
+ "strsim",
  "thirtyfour",
  "tokio",
  "zip-extract",
@@ -1584,6 +1585,12 @@ checksum = "6aadc0801d92f0cdc26127c67c4b8766284f52a5ba22894f285e3101fa57d05d"
 dependencies = [
  "regex",
 ]
+
+[[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "subtle"

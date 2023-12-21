@@ -31,3 +31,4 @@ crossbeam = "0.8.2"
 serde_derive = { version = "1.0.193", features = [] }
 serde = "1.0.193"
 serde_json = "1.0.108"
+strsim = "0.10.0"

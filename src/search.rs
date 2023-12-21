@@ -1,7 +1,6 @@
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use std::error::Error;
-use std::str::pattern::Pattern;
 use reqwest::Client;
 use crate::web;
 
@@ -12,9 +11,22 @@ pub(crate) async fn search_over_json(name: Option<&String>, lang: Option<&String
 	if let Some(name) = name{
 		let resp = web::web_request(&client, &format!("https://neko-sama.fr/animes-search-{}.json", lang.unwrap_or(&String::from("vf")))).await.unwrap();
 
+		let name = name.as_str();
+
+		let cleaned_name = clean_string(name);
+
 		let v: Root = serde_json::from_str(&*resp.text().await.unwrap()).unwrap();
 		for x in v {
-			if name.to_lowercase().is_contained_in(&x.title.to_lowercase()){
+			let cleaned_title = clean_string(&x.title);
+
+			let levenshtein_distance = strsim::levenshtein(&cleaned_name, &cleaned_title) as f64;
+			let max_length = cleaned_name.len().max(cleaned_title.len()) as f64;
+			let levenshtein_similarity = 1.0 - levenshtein_distance / max_length;
+
+			if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8
+				|| levenshtein_similarity > 0.8
+				|| cleaned_title.contains(&cleaned_name)
+			{
 				find.push((x.title, format!("{}{}", base_url, x.url)));
 			}
 		}
@@ -22,7 +34,20 @@ pub(crate) async fn search_over_json(name: Option<&String>, lang: Option<&String
 	Ok(find)
 }
 
+fn clean_string(s: &str) -> String {
+	s.chars()
+		.filter(|&c| c.is_alphanumeric() || c.is_whitespace())
+		.collect::<String>()
+		.to_lowercase()
+}
 
+fn jaccard_similarity(s1: &str, s2: &str) -> f64 {
+	let set1: std::collections::HashSet<_> = s1.chars().collect();
+	let set2: std::collections::HashSet<_> = s2.chars().collect();
+	let intersection_size = set1.intersection(&set2).count() as f64;
+	let union_size = set1.union(&set2).count() as f64;
+	intersection_size / union_size
+}
 
 pub type Root = Vec<Season>;
 

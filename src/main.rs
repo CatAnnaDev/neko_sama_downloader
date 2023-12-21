@@ -81,7 +81,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
 
             let mut s=String::new();
-            print!("All is good for you to download ({}) seasons ? [Y/n]: ", processing_url.len());
+            if args.iter().nth(2).unwrap() != " " {
+                print!("All is good for you to download ({}) seasons ? [Y/n]: ", processing_url.len());
+            }else {
+                print!("All is good for you to download NekoSama ? ({}) seasons ? [Y/n]: ", processing_url.len());
+            }
             let _=stdout().flush();
             stdin().read_line(&mut s).expect("Did not enter a correct string");
             if let Some('\n')=s.chars().next_back() {
@@ -90,7 +94,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if let Some('\r')=s.chars().next_back() {
                 s.pop();
             }
-            println!("{s:?}");
             if s == "n" {
                 exit(0);
             }
@@ -114,7 +117,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         println!(r#"
 ./anime_dl search "my super anime name" <vf or vostfr> <thread number>
 ./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
-            "#);        exit(0);
+            "#);
+        exit(0);
     }
 
     fs::create_dir_all(&extract_path)?;
