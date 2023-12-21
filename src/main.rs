@@ -76,9 +76,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let find = search::search_over_json(args.iter().nth(2), args.iter().nth(3)).await?;
             thread = args.iter().nth(4).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
             processing_url.extend(find.clone());
-            for (id, (name, url)) in find.iter().enumerate() {
-                println!("({}): {name}:\n{url}\n", id+1);
-            }
+
+            if find.len() <= 50 {
+                for (id, (name, url)) in find.iter().enumerate() {
+                    println!("({}): {name}:\n{url}\n", id + 1);
+                }
+            }else { warn!("more than 50 seasons found") }
 
             let mut s=String::new();
             if args.iter().nth(2).unwrap() != " " {
@@ -211,7 +214,7 @@ async fn start(
     chrome: &PathBuf,
     ublock: &PathBuf,
     ffmpeg: &PathBuf,
-    thread: usize,
+    mut thread: usize,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
@@ -246,7 +249,7 @@ async fn start(
 
     info!("Scan Main Page");
 
-    let episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
+    let mut episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
 
     info!("total found: {}", &episode_url.len());
 
@@ -256,7 +259,12 @@ async fn start(
     }
 
     info!("Get all .m3u8");
-    let (good, error) = get_real_video_link(&episode_url, &driver, &client, &tmp_dl).await?;
+    let (good, error) = get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl).await?;
+
+    if thread > good as usize {
+        warn!("update thread count from {thread} to {good}");
+        thread = good as usize;
+    }
 
     info!("Start Processing with {} threads", thread);
 
@@ -275,11 +283,10 @@ async fn start(
 
     let mut save_path_vlc = vec![];
 
-    let _: Vec<_> = fs::read_dir(tmp_dl)?
+    let mut m3u8_path_folder: Vec<_> = fs::read_dir(tmp_dl)?
         .filter_map(|entry| {
             let save = &mut save_path_vlc;
-            let tx = tx.clone();
-            let ffmpeg = ffmpeg.clone();
+
             let entry = entry.ok();
             let file_path = entry?.path();
 
@@ -299,19 +306,27 @@ async fn start(
 
                 let _ = &mut save.push((name.clone(), &save_path));
 
-                Some(pool.execute(move || {
-                    tx.send(web::download_build_video(
-                        &output_path.to_str().unwrap(),
-                        name.to_str().unwrap(),
-                        &ffmpeg,
-                    ))
-                        .unwrap_or(())
-                }))
+                Some((output_path, name))
             } else {
                 None
             }
         })
         .collect();
+
+    custom_sort(&mut m3u8_path_folder);
+
+    for (output_path, name) in m3u8_path_folder {
+        let tx = tx.clone();
+        let ffmpeg = ffmpeg.clone();
+        pool.execute(move || {
+            tx.send(web::download_build_video(
+                &output_path.to_str().unwrap(),
+                name.to_str().unwrap(),
+                &ffmpeg,
+            ))
+                .unwrap_or(())
+        })
+    }
 
     drop(tx);
 
@@ -326,7 +341,8 @@ async fn start(
 
     if good >= 2 {
         info!("Build vlc playlist");
-        save_path_vlc.sort();
+        custom_sort_vlc(&mut save_path_vlc);
+        println!("{:#?}", save_path_vlc);
         vlc_playlist_builder::new(save_path_vlc)?;
     }
 
@@ -362,7 +378,7 @@ async fn scan_main_page(
 }
 
 async fn get_real_video_link(
-    episode_url: &Vec<(String, String)>,
+    episode_url: &mut Vec<(String, String)>,
     driver: &WebDriver,
     client: &Client,
     tmp_dl: &PathBuf,
@@ -397,6 +413,37 @@ async fn get_real_video_link(
     }
     println!();
     Ok((nb_found, nb_error))
+}
+
+
+fn custom_sort(vec: &mut Vec<(PathBuf, PathBuf)>) {
+    vec.sort_by(|a, b| {
+        let num_a = extract_episode_number(&a.1.to_str().unwrap());
+        let num_b = extract_episode_number(&b.1.to_str().unwrap());
+        num_a.cmp(&num_b)
+    });
+}
+
+fn extract_episode_number(s: &str) -> i32 {
+    s.trim_end_matches(".mp4").split_whitespace()
+        .filter_map(|word| word.parse::<i32>().ok())
+        .last()
+        .unwrap_or(0)
+}
+
+fn custom_sort_vlc(vec: &mut Vec<(PathBuf, &String)>) {
+    vec.sort_by(|a, b| {
+        let num_a = extract_episode_number_vlc(&a.0.to_str().unwrap());
+        let num_b = extract_episode_number_vlc(&b.0.to_str().unwrap());
+        num_a.cmp(&num_b)
+    });
+}
+
+fn extract_episode_number_vlc(s: &str) -> i32 {
+    s.trim_end_matches(".mp4").split_whitespace()
+        .filter_map(|word| word.parse::<i32>().ok())
+        .last()
+        .unwrap_or(0)
 }
 
 fn edit_for_windows_compatibility(name: &str) -> String {
