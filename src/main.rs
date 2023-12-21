@@ -1,3 +1,4 @@
+#![feature(pattern)]
 use std::{
     {fs, io},
     env,
@@ -8,6 +9,7 @@ use std::{
     time::Duration,
     time::Instant,
 };
+use std::io::{stdin, stdout, Write};
 use std::process::Stdio;
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -24,6 +26,7 @@ mod thread_pool;
 mod utils_check;
 mod vlc_playlist_builder;
 mod web;
+mod search;
 
 // 120.0.6099.110
 
@@ -62,22 +65,53 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut ublock_check = false;
 
     let args: Vec<_> = env::args().collect::<_>();
-    let url_test = args
-        .iter()
-        .nth(1)
-        .expect("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-    let thread = args
-        .iter()
-        .nth(2)
-        .unwrap_or(&String::from("1"))
-        .parse::<usize>()
-        .unwrap();
 
-    if url_test.is_empty() {
+    let arg_type = args.iter().nth(1).expect("truc");
+
+    let mut processing_url = vec![];
+    let mut thread = 0;
+
+    match arg_type.as_str() {
+        "search" => {
+            let find = search::search_over_json(args.iter().nth(2), args.iter().nth(3)).await?;
+            thread = args.iter().nth(4).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+            processing_url.extend(find.clone());
+            for (id, (name, url)) in find.iter().enumerate() {
+                println!("({}): {name}:\n{url}\n", id+1);
+            }
+
+            let mut s=String::new();
+            print!("All is good for you to download ({}) seasons ? [Y/n]: ", processing_url.len());
+            let _=stdout().flush();
+            stdin().read_line(&mut s).expect("Did not enter a correct string");
+            if let Some('\n')=s.chars().next_back() {
+                s.pop();
+            }
+            if let Some('\r')=s.chars().next_back() {
+                s.pop();
+            }
+            println!("{s:?}");
+            if s == "n" {
+                exit(0);
+            }
+        }
+        "download" => {
+            let url_test = args.iter().nth(2).expect("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
+            processing_url.extend(vec![("".to_string(),url_test.to_string())]);
+            thread = args.iter().nth(3).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+        }
+        "help" => {
+            println!(r#"
+./anime_dl search "my super anime name" <vf or vostfr> <thread number>
+./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
+            "#)
+        }
+        _ => {}
+    }
+
+    if processing_url.is_empty() {
         warn!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
         exit(0);
-    } else if !url_test.contains("https://neko-sama.fr/") {
-        warn!("ONLY https://neko-sama.fr/ work actually")
     }
 
     fs::create_dir_all(&extract_path)?;
@@ -121,16 +155,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("Erreur lors du téléchargement de uBlock Origin.");
     }
     if ffmpeg_check && chrome_check && ublock_check {
-        start(
-            &url_test,
-            exe_path,
-            &tmp_dl,
-            &chrome_path,
-            &u_block_path,
-            &ffmpeg_path,
-            thread,
-        )
-            .await?;
+        for (_, url) in processing_url {
+            info!("Process: {url}");
+            start(
+                &url,
+                exe_path,
+                &tmp_dl,
+                &chrome_path,
+                &u_block_path,
+                &ffmpeg_path,
+                thread,
+            ).await?;
+        }
+
     } else if !ffmpeg_check && chrome_check {
         error!(
             "Please download then extract {} ffmpeg here:\n{}",
