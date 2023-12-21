@@ -104,14 +104,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!(r#"
 ./anime_dl search "my super anime name" <vf or vostfr> <thread number>
 ./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
-            "#)
+            "#);
+            exit(0);
         }
         _ => {}
     }
 
     if processing_url.is_empty() {
-        warn!("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-        exit(0);
+        println!(r#"
+./anime_dl search "my super anime name" <vf or vostfr> <thread number>
+./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
+            "#);        exit(0);
     }
 
     fs::create_dir_all(&extract_path)?;
