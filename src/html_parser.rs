@@ -16,7 +16,6 @@ pub async fn recursive_find_url(
     let mut episode_url = Vec::new();
     let mut all_l = vec![];
 
-
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
         let video_url = get_video_url(&driver).await?;
@@ -89,7 +88,12 @@ pub async fn get_video_url(driver: &WebDriver) -> Result<String, Box<dyn Error>>
     Ok(String::from(""))
 }
 
-pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_url(
+    url: &str,
+    file_name: &str,
+    tmp_dl: &PathBuf,
+    client: &Client,
+) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await?;
     if body.status().is_success() {
         let split = body
@@ -99,8 +103,8 @@ pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Cl
             .lines()
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
-        let mut out =
-            File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap())).expect("failed to create file");
+        let mut out = File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
+            .expect("failed to create file");
         let link = &split[2];
         io::copy(
             &mut web::web_request(&client, link)

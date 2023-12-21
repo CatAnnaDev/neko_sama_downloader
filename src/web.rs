@@ -18,7 +18,8 @@ pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
             "copy",
             &name,
         ])
-        .output().unwrap();
+        .output()
+        .unwrap();
     1
 }
 

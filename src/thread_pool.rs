@@ -71,7 +71,7 @@ impl Worker {
             match queue.pop() {
                 Some(Job::Task(job)) => job(),
                 Some(Job::Terminate) => break,
-                None => thread::park()
+                None => thread::park(),
             }
         });
 
