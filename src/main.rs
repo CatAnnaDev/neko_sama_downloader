@@ -8,6 +8,7 @@ use std::{
     time::Duration,
     time::Instant,
 };
+use std::process::Stdio;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
@@ -38,19 +39,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let extract_path = exe_path.join(PathBuf::from("utils/"));
     let tmp_dl = exe_path.join(PathBuf::from("tmp/"));
 
+    // chrome driver
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "linux")]
         let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
-    #[cfg(target_os = "macos")]
-        let u_block_path = extract_path.join(PathBuf::from("uBlock-Origin.crx"));
-    #[cfg(target_os = "macos")]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
-
     #[cfg(target_os = "windows")]
         let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
-    #[cfg(target_os = "windows")]
-        let u_block_path = extract_path.join(PathBuf::from("uBlock-Origin.crx"));
+
+    // ffmpeg
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "linux")]
+        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
         let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
+
+    // ublock
+    let u_block_path = extract_path.join(PathBuf::from("uBlock-Origin.crx"));
+
 
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
@@ -90,6 +95,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
 
             #[cfg(target_os = "macos")]
+            #[cfg(target_os = "linux")]
             if x.file_name().to_str().unwrap().ends_with("") {
                 if x.file_name().to_str().unwrap().contains("chromedriver") {
                     chrome_check = true;
@@ -98,6 +104,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     ffmpeg_check = true;
                 }
             }
+
             if x.file_name().to_str().unwrap().ends_with(".crx") {
                 if x.file_name().to_str().unwrap().contains("uBlock-Origin") {
                     ublock_check = true;
@@ -171,9 +178,7 @@ async fn start(
             "--disable-logging",
             "--disable-logging-redirect",
             "--port=6969",
-        ])
-        .output()
-        .expect("there was an error");
+        ]).stdout(Stdio::null()).spawn()?;
 
     let before = Instant::now();
 
