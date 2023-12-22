@@ -6,11 +6,17 @@
 ```
 
 # Features
-  - Multi thread to download and process video 1 thread can download between 3 and 5 mo/s ( limited by website ) so 20 thread is good for 1gb/s fiber
+  - Multi thread to download and process video 
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
   - Can search all seasons by name and download 
   - ublock origin is added by default
+
+# Note
+- (Multi thread) 1 thread can download between 3 and 5 mo/s ( limited by website ) so 20 thread is good for 1gb/s fiber
+- (Vlc Playlist) is based on path if you move all video download the playlist is broken
+- (ublock origin) can't be disabled, it's a better way to stay safe
+- (search engine) is not perfect but work 
 
 # Actual Support
  - only work with " https://neko-sama.fr/ " for now
