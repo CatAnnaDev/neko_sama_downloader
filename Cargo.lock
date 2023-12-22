@@ -48,6 +48,7 @@ dependencies = [
  "crossbeam",
  "futures",
  "indicatif",
+ "num_cpus",
  "quick-xml",
  "regex",
  "reqwest",

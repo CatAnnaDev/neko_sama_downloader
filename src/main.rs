@@ -72,16 +72,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut processing_url = vec![];
     let mut thread = 0;
-
+    let max_thread = std::thread::available_parallelism()?.get() * 4;
     match arg_type.as_str() {
         "search" => {
+
             let find = search::search_over_json(args.iter().nth(2), args.iter().nth(3)).await?;
-            thread = args.iter().nth(4).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+            thread = args.iter().last().unwrap_or(&String::from("1")).parse::<usize>().unwrap();
             processing_url.extend(find.clone());
 
+            if thread > max_thread {
+                warn!("Max thread for your cpu is between 1 and {}", max_thread);
+                thread = max_thread;
+            }
+
             if find.len() <= 50 {
-                for (id, (name, url)) in find.iter().enumerate() {
-                    println!("({}): {name}:\n{url}\n", id + 1);
+                for (id, (name, nb_ep, url)) in find.iter().enumerate() {
+                    println!("({}): {name} ({nb_ep}):\n{url}\n", id + 1);
                 }
             }else { warn!("more than 50 seasons found") }
 
@@ -105,8 +111,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         "download" => {
             let url_test = args.iter().nth(2).expect("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-            processing_url.extend(vec![("".to_string(),url_test.to_string())]);
+            processing_url.extend(vec![("".to_string(),"".to_string(),url_test.to_string())]);
             thread = args.iter().nth(3).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+
+            if thread > max_thread {
+                warn!("Max thread for your cpu is between 1 and {}", max_thread);
+                thread = max_thread;
+            }
         }
         "help" => {
             println!(r#"
@@ -117,6 +128,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         _ => {}
     }
+
+
 
     if processing_url.is_empty() {
         println!(r#"
@@ -167,7 +180,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .expect("Erreur lors du téléchargement de uBlock Origin.");
     }
     if ffmpeg_check && chrome_check && ublock_check {
-        for (_, url) in processing_url {
+
+        let global_time = Instant::now();
+
+        for (_, _, url) in processing_url {
             info!("Process: {url}");
             start(
                 &url,
@@ -179,20 +195,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 thread,
             ).await?;
         }
-
-    } else if !ffmpeg_check && chrome_check {
+        info!("Global time: {}", time_to_human_time(global_time));
+    }
+    else if !ffmpeg_check && chrome_check {
         error!(
             "Please download then extract {} ffmpeg here:\n{}",
             ffmpeg_path.display(),
             static_data::FFMPEG_PATH
         );
-    } else if !chrome_check && ffmpeg_check {
+    }
+    else if !chrome_check && ffmpeg_check {
         error!(
             "Please download chrome wed driver then extract {} in utils folder here:\n{}",
             chrome_path.display(),
             static_data::DRIVER_PATH
         );
-    } else {
+    }
+    else {
         error!(
             "Please download chrome wed driver then extract {} in utils folder here:\n{}",
             chrome_path.display(),
@@ -207,6 +226,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+fn time_to_human_time(time: Instant) -> String {
+    let seconds = time.elapsed().as_secs() % 60;
+    let minutes = (time.elapsed().as_secs() / 60) % 60;
+    let hours = (time.elapsed().as_secs() / 60) / 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
 async fn start(
