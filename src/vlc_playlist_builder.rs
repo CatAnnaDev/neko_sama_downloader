@@ -71,6 +71,9 @@ fn write_vlc_item(writer: &mut Writer<File>, tid: usize) -> Result<(), Box<dyn E
 }
 
 #[cfg(target_os = "macos")]
+fn path_to_vlcpath(path: &str) -> String {
+    format!("file://{}", path.replace(" ", "%20"))
+}
 #[cfg(target_os = "linux")]
 fn path_to_vlcpath(path: &str) -> String {
     format!("file://{}", path.replace(" ", "%20"))

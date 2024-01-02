@@ -46,6 +46,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // chrome driver
     #[cfg(target_os = "macos")]
+        let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "linux")]
         let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "windows")]
@@ -53,6 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // ffmpeg
     #[cfg(target_os = "macos")]
+        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "linux")]
         let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
@@ -154,6 +156,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
 
             #[cfg(target_os = "macos")]
+            if x.file_name().to_str().unwrap().ends_with("") {
+                if x.file_name().to_str().unwrap().contains("chromedriver") {
+                    chrome_check = true;
+                }
+                if x.file_name().to_str().unwrap().contains("ffmpeg") {
+                    ffmpeg_check = true;
+                }
+            }
+
             #[cfg(target_os = "linux")]
             if x.file_name().to_str().unwrap().ends_with("") {
                 if x.file_name().to_str().unwrap().contains("chromedriver") {
