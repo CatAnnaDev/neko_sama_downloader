@@ -1,11 +1,8 @@
 #![feature(pattern)]
-
-use std::{error::Error, fs, process::exit, time::Instant};
-use std::io::{stdin, stdout, Write};
-
-use clap::Parser;
-
 use crate::search::ProcessingUrl;
+use clap::Parser;
+use std::io::{stdin, stdout, Write};
+use std::{error::Error, fs, process::exit, time::Instant};
 
 mod cmd_line_parser;
 mod html_parser;
@@ -21,27 +18,31 @@ mod web;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let path = utils_check::check();
-    let path = path?;
+    let new_args = cmd_line_parser::Args::parse();
+    info!("Debug print is {}", new_args.debug);
+    let path = utils_check::check()?;
 
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
     let mut ublock_check = false;
-    let new_args = cmd_line_parser::Args::parse();
 
-    let mut processing_url = vec![];
     let mut thread = new_args.thread as usize;
     let max_thread = std::thread::available_parallelism()?.get() * 4;
-
     if thread > max_thread {
         warn!("Max thread for your cpu is between 1 and {}", max_thread);
         thread = max_thread;
     }
 
+    let mut processing_url = vec![];
     match new_args.scan.as_str() {
         "search" => {
-            let find =
-                search::search_over_json(&new_args.url_or_search_word, &new_args.language).await?;
+            let find = search::search_over_json(
+                &new_args.url_or_search_word,
+                &new_args.language,
+                &new_args.debug,
+            )
+            .await?;
+
             processing_url.extend(find.clone());
 
             let mut nb_episodes = 0;
@@ -75,10 +76,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             let proc_len = processing_url.len();
             let mut s = String::new();
-            if proc_len == 0 {
-                warn!("Noting found retry with another keyword");
-                exit(0);
-            }
+
             if new_args.url_or_search_word != " " {
                 print!("Ready to download ({proc_len}) seasons? 'Y' to download all, 'n' to cancel, or choose a season [1-{proc_len}]: ");
             } else {
@@ -127,38 +125,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    if processing_url.is_empty() {
-        warn!("you can't download 0");
-        exit(0);
-    }
-
     fs::create_dir_all(&path.extract_path)?;
 
     for entry in fs::read_dir(&path.extract_path)? {
         if let Ok(x) = entry {
-            #[cfg(target_os = "windows")]
-            if x.file_name().to_str().unwrap().ends_with(".exe") {
-                if x.file_name().to_str().unwrap().contains("chromedriver") {
-                    chrome_check = true;
+            if let Some(file_name) = x.file_name().to_str() {
+                #[cfg(target_os = "windows")]
+                if file_name.ends_with(".exe") {
+                    if file_name.contains("chromedriver") {
+                        chrome_check = true;
+                    }
+                    if file_name.contains("ffmpeg") {
+                        ffmpeg_check = true;
+                    }
                 }
-                if x.file_name().to_str().unwrap().contains("ffmpeg") {
-                    ffmpeg_check = true;
-                }
-            }
 
-            #[cfg(target_family = "unix")]
-            if x.file_name().to_str().unwrap().ends_with("") {
-                if x.file_name().to_str().unwrap().contains("chromedriver") {
-                    chrome_check = true;
+                #[cfg(target_family = "unix")]
+                if file_name.ends_with("") {
+                    if file_name.contains("chromedriver") {
+                        chrome_check = true;
+                    }
+                    if file_name.contains("ffmpeg") {
+                        ffmpeg_check = true;
+                    }
                 }
-                if x.file_name().to_str().unwrap().contains("ffmpeg") {
-                    ffmpeg_check = true;
-                }
-            }
 
-            if x.file_name().to_str().unwrap().ends_with(".crx") {
-                if x.file_name().to_str().unwrap().contains("uBlock-Origin") {
-                    ublock_check = true;
+                if file_name.ends_with(".crx") {
+                    if file_name.contains("uBlock-Origin") {
+                        ublock_check = true;
+                    }
                 }
             }
         }
@@ -185,8 +180,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     &path.u_block_path,
                     &path.ffmpeg_path,
                     thread,
+                    &new_args.debug,
                 )
-                    .await?;
+                .await?;
             }
             info!(
                 "Global time: {}",

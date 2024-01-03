@@ -1,7 +1,6 @@
+use reqwest::{Client, Response};
 use std::path::PathBuf;
 use std::process::Command;
-
-use reqwest::{Client, Response};
 
 pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
     let _ = Command::new(ffmpeg)

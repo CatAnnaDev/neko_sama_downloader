@@ -32,15 +32,15 @@ pub fn check() -> Result<AllPath, Box<dyn Error>> {
 
     // chrome driver
     #[cfg(target_family = "unix")]
-        let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
+    let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "windows")]
-        let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
+    let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
 
     // ffmpeg
     #[cfg(target_family = "unix")]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
+    let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
+    let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
 
     // ublock
     let u_block_path = extract_path.join(PathBuf::from("uBlock-Origin.crx"));
