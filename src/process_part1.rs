@@ -53,6 +53,9 @@ pub async fn start(
         .add_extension(ublock)
         .expect("can't install ublock origin");
 
+    if *debug {
+        debug!("connect to chrome driver");
+    }
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
     driver.minimize_window().await?;
 
@@ -236,7 +239,7 @@ pub async fn get_real_video_link(
                         }
                         Some(url) => {
                             if *debug {
-                                debug!("js return: {:#?}", script.json())
+                                // debug!("js return: {:?}", script.json())
                             }
                             html_parser::fetch_url(
                                 url,
