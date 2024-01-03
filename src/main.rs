@@ -90,7 +90,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
 
             let mut s=String::new();
-            if new_args.url_or_search_word != " " {
+            if processing_url.len() == 0{
+                warn!("Noting found retry with another keyword");
+                exit(0);
+            }
+            if new_args.url_or_search_word != " "  {
                 print!("All is good for you to download ({}) seasons ? so {} Eps [Y/n]: ", processing_url.len(), nb_episodes);
             }else {
                 print!("All is good for you to download NekoSama ? ({}) seasons ? so {} Eps  [Y/n]: ", processing_url.len(), nb_episodes);
