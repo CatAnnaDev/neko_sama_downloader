@@ -12,9 +12,9 @@ pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
             path,
             "-bsf:a",
             "aac_adtstoasc",
-            "-c",
+            "-c:v",
             "copy",
-            "-vcodec",
+            "-c:a",
             "copy",
             &name,
         ])
