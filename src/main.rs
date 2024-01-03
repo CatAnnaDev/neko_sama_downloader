@@ -98,9 +98,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 exit(0);
             }
             if new_args.url_or_search_word != " "  {
-                print!("All is good for you to download ({}) seasons ? so {} Eps [Y/n] or [1-{}]: ", proc_len, nb_episodes, proc_len);
+                //print!("Ready to download ({proc_len}) seasons ? so {nb_episodes} Eps [Y(download all seasons found)/n] or pick juste 1 [1-{proc_len}]: ");
+                print!("Ready to download ({proc_len}) seasons? 'Y' to download all, 'n' to cancel, or choose a season [1-{proc_len}]: ");
             }else {
-                print!("All is good for you to download NekoSama ? ({}) seasons ? so {} Eps  [Y/n]: ", proc_len, nb_episodes);
+                print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ",new_args.language);
             }
             let _=stdout().flush();
             stdin().read_line(&mut s).expect("Did not enter a correct string");
@@ -111,7 +112,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 s.pop();
             }
             if let Ok(mut pick) = s.parse::<usize>(){
-                if pick <= 0{ pick = 0; }
+                if pick <= 0{ pick = 1; }
                 if pick >= proc_len{ pick = proc_len; }
 
                 let url = processing_url[pick - 1].clone();
@@ -224,6 +225,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
+    let _ = utils_data::kill_process();
     Ok(())
 }
 
