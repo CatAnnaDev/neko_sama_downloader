@@ -2,18 +2,24 @@ use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use std::error::Error;
 use reqwest::Client;
-use crate::web;
+use crate::{warn, web};
 
 pub(crate) async fn search_over_json(name: &String, lang: &String) -> Result<Vec<(String, String, String)>, Box<dyn Error>>{
+	let mut edit_lang = lang.to_lowercase();
+	if edit_lang != "vf".to_string() && edit_lang != "vostfr".to_string() {
+		warn!("\"{edit_lang}\" doesn't exist, replaced by \"vf\" automatically, use only \"vf\" or \"vostfr\"");
+		edit_lang = "vf".to_string();
+	}
+
 	let client = Client::builder().build()?;
 	let base_url = "https://neko-sama.fr";
 	let mut find = vec![];
-		let resp = web::web_request(&client, &format!("https://neko-sama.fr/animes-search-{}.json", lang)).await.unwrap();
+		let resp = web::web_request(&client, &format!("https://neko-sama.fr/animes-search-{}.json", edit_lang)).await.unwrap();
 
-		let rep = &*resp.text().await?;
+		let rep = resp.text().await?;
 		let cleaned_name = clean_string(&name);
 
-		let v: Root = serde_json::from_str(rep)?;
+		let v: Root = serde_json::from_str(&rep)?;
 		for x in v {
 			let cleaned_title = clean_string(&x.title);
 

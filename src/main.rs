@@ -3,22 +3,13 @@ use std::{
     fs,
     env,
     error::Error,
-    path::{Path, PathBuf},
-    process::{Command, exit},
-    sync::mpsc,
-    time::Duration,
+    path::PathBuf,
+    process::exit,
     time::Instant,
 };
 use std::io::{stdin, stdout, Write};
-use std::process::Stdio;
 use clap::Parser;
 
-use indicatif::{ProgressBar, ProgressStyle};
-use regex::Regex;
-use reqwest::Client;
-use thirtyfour::{common::capabilities::chrome::ChromeCapabilities, WebDriver};
-
-use crate::thread_pool::ThreadPool;
 
 mod html_parser;
 mod log_color;
@@ -28,8 +19,9 @@ mod utils_check;
 mod vlc_playlist_builder;
 mod web;
 mod search;
-mod help;
 mod cmd_line_parser;
+mod utils_data;
+mod process_part1;
 
 // 120.0.6099.110
 
@@ -37,7 +29,6 @@ mod cmd_line_parser;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    //let _ = kill_process();
     let binding = env::current_exe()?;
     let exe_path = binding.parent().unwrap();
 
@@ -46,7 +37,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let extract_path = exe_path.join(PathBuf::from("utils/"));
     let tmp_dl = exe_path.join(PathBuf::from("tmp/"));
 
-    remove_dir_contents(&tmp_dl);
+    utils_data::remove_dir_contents(&tmp_dl);
 
     // chrome driver
     #[cfg(target_family = "unix")]
@@ -70,19 +61,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let new_args = cmd_line_parser::Args::parse();
 
     let mut processing_url = vec![];
-    let mut thread = 0;
+    let mut thread = new_args.thread as usize;
     let max_thread = std::thread::available_parallelism()?.get() * 4;
+
+    if thread > max_thread {
+        warn!("Max thread for your cpu is between 1 and {}", max_thread);
+        thread = max_thread;
+    }
+
     match new_args.scan.as_str() {
         "search" => {
 
             let find = search::search_over_json(&new_args.url_or_search_word, &new_args.language).await?;
-            thread = new_args.thread as usize;
             processing_url.extend(find.clone());
-
-            if thread > max_thread {
-                warn!("Max thread for your cpu is between 1 and {}", max_thread);
-                thread = max_thread;
-            }
 
             let mut nb_episodes = 0;
             if find.len() <= 50 {
@@ -118,23 +109,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         "download" => {
             processing_url.extend(vec![("".to_string(),"".to_string(),new_args.url_or_search_word)]);
-            thread = new_args.thread as usize;
-
-            if thread > max_thread {
-                warn!("Max thread for your cpu is between 1 and {}", max_thread);
-                thread = max_thread;
-            }
-        }
-        "help" => {
-            help::print_help();
-            exit(0);
         }
         _ => {}
     }
 
 
     if processing_url.is_empty() {
-        help::print_help();
+        warn!("you can't download 0");
         exit(0);
     }
 
@@ -183,7 +164,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         for (_, _, url) in processing_url {
             info!("Process: {url}");
-            start(
+            process_part1::start(
                 &url,
                 exe_path,
                 &tmp_dl,
@@ -193,7 +174,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 thread,
             ).await?;
         }
-        info!("Global time: {}", time_to_human_time(global_time));
+        info!("Global time: {}",utils_data::time_to_human_time(global_time));
     }
     else if !ffmpeg_check && chrome_check {
         error!(
@@ -226,258 +207,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn time_to_human_time(time: Instant) -> String {
-    let seconds = time.elapsed().as_secs() % 60;
-    let minutes = (time.elapsed().as_secs() / 60) % 60;
-    let hours = (time.elapsed().as_secs() / 60) / 60;
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-}
-
-async fn start(
-    url_test: &String,
-    exe_path: &Path,
-    tmp_dl: &PathBuf,
-    chrome: &PathBuf,
-    ublock: &PathBuf,
-    ffmpeg: &PathBuf,
-    mut thread: usize,
-) -> Result<(), Box<dyn Error>> {
-    let client = Client::builder().build()?;
-
-    let _ = Command::new(chrome)
-        .args([
-            "--ignore-certificate-errors",
-            "--disable-popup-blocking",
-            "--disable-logging",
-            "--disable-logging-redirect",
-            "--port=6969",
-        ]).stdout(Stdio::null()).spawn()?;
-
-    let before = Instant::now();
-
-    let mut save_path = String::new();
-
-    let base_url = "https://neko-sama.fr";
-
-    let mut prefs = ChromeCapabilities::new();
-    prefs
-        .add_extension(ublock)
-        .expect("can't install ublock origin");
-
-
-    let driver = WebDriver::new("http://localhost:6969", prefs).await?;
-    driver.minimize_window().await?;
-
-    driver
-        .set_page_load_timeout(Duration::from_secs(20))
-        .await?;
-
-    driver.goto(url_test).await?;
-
-    info!("Scan Main Page");
-
-    let mut episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
-
-    info!("total found: {}", &episode_url.len());
-
-    if &episode_url.len() == &0usize {
-        driver.close_window().await?;
-        return Ok(());
-    }
-
-    info!("Get all .m3u8");
-    let (good, error) = get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl).await?;
-
-    if thread > good as usize {
-        warn!("update thread count from {thread} to {good}");
-        thread = good as usize;
-    }
-
-    info!("Start Processing with {} threads", thread);
-
-    let progress_bar = ProgressBar::new(good as u64);
-    progress_bar.enable_steady_tick(Duration::from_secs(1));
-
-    progress_bar.set_style(
-        ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta})")?
-            .progress_chars("$>-"),
-    );
-
-    let (tx, rx) = mpsc::channel();
-
-    let mut pool = ThreadPool::new(thread, episode_url.len());
-
-    let mut save_path_vlc = vec![];
-
-    let mut m3u8_path_folder: Vec<_> = fs::read_dir(tmp_dl)?
-        .filter_map(|entry| {
-            let save = &mut save_path_vlc;
-
-            let entry = entry.ok();
-            let file_path = entry?.path();
-
-            if file_path.is_file() {
-                let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
-
-                let name = exe_path
-                    .join(&save_path)
-                    .join(edit_for_windows_compatibility(
-                        &file_path
-                            .file_name()
-                            .unwrap()
-                            .to_str()
-                            .unwrap()
-                            .replace(".m3u8", ".mp4"),
-                    ));
-
-                let _ = &mut save.push((name.clone(), &save_path));
-
-                Some((output_path, name))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    custom_sort(&mut m3u8_path_folder);
-
-    for (output_path, name) in m3u8_path_folder {
-        let tx = tx.clone();
-        let ffmpeg = ffmpeg.clone();
-        pool.execute(move || {
-            tx.send(web::download_build_video(
-                &output_path.to_str().unwrap(),
-                name.to_str().unwrap(),
-                &ffmpeg,
-            ))
-                .unwrap_or(())
-        })
-    }
-
-    drop(tx);
-
-    for _ in rx.iter().take(episode_url.len()) {
-        progress_bar.inc(1);
-    }
-
-    progress_bar.finish();
-    driver.close_window().await?;
-    info!("Clean tmp dir!");
-    remove_dir_contents(tmp_dl);
-
-    if good >= 2 {
-        info!("Build vlc playlist");
-        custom_sort_vlc(&mut save_path_vlc);
-        vlc_playlist_builder::new(save_path_vlc)?;
-    }
-
-    let seconds = before.elapsed().as_secs() % 60;
-    let minutes = (before.elapsed().as_secs() / 60) % 60;
-    let hours = (before.elapsed().as_secs() / 60) / 60;
-
-    let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
-
-    info!(
-        "Done in: {} for {} episodes and {} error",
-        time, good, error
-    );
-
-    driver.quit().await?;
-    let _ = kill_process();
-    Ok(())
-}
-
-fn kill_process() -> Result<(), Box<dyn Error>>{
-    #[cfg(target_os = "windows")]
-        let _ = Command::new("taskkill").args(["/t","/f","/im","chromedriver.exe"]).stdout(Stdio::null()).spawn()?;
-    Ok(())
-}
-
-async fn scan_main_page(
-    save_path: &mut String,
-    driver: &WebDriver,
-    url_test: &str,
-    base_url: &str,
-    tmp_dl: &PathBuf,
-) -> Result<Vec<(String, String)>, Box<dyn Error>> {
-    fs::create_dir_all(tmp_dl)?;
-
-    save_path.push_str(&edit_for_windows_compatibility(
-        &driver.title().await?.replace(" - Neko Sama", ""),
-    ));
-
-    fs::create_dir_all(tmp_dl.parent().unwrap().join(save_path))?;
-    Ok(html_parser::recursive_find_url(&driver, url_test, base_url).await?)
-}
-
-async fn get_real_video_link(
-    episode_url: &mut Vec<(String, String)>,
-    driver: &WebDriver,
-    client: &Client,
-    tmp_dl: &PathBuf,
-) -> Result<(u16, u16), Box<dyn Error>> {
-    let mut nb_found = 0u16;
-    let mut nb_error = 0u16;
-    for (name, url) in episode_url {
-        if url.starts_with("http") {
-            driver.goto(&url).await?;
-
-            if let Ok(script) = driver
-                .execute(
-                    r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#,
-                    vec![],
-                )
-                .await
-            {
-                info!("Get m3u8 for: {}", name);
-                if let Some(url) = script.json()["file"].as_str() {
-                    html_parser::fetch_url(url, &name.trim().replace(":", ""), &tmp_dl, &client)
-                        .await?;
-                    nb_found += 1;
-                }
-            } else {
-                error!("Can't get .m3u8 {name} (probably 404)");
-                nb_error += 1;
-            }
-        } else {
-            error!("Error with: {name} url: {url}");
-            nb_error += 1;
-        }
-    }
-    println!();
-    Ok((nb_found, nb_error))
-}
-
-
-fn custom_sort(vec: &mut Vec<(PathBuf, PathBuf)>) {
-    vec.sort_by(|a, b| {
-        let num_a = extract_episode_number(&a.1.to_str().unwrap());
-        let num_b = extract_episode_number(&b.1.to_str().unwrap());
-        num_a.cmp(&num_b)
-    });
-}
-
-fn custom_sort_vlc(vec: &mut Vec<(PathBuf, &String)>) {
-    vec.sort_by(|a, b| {
-        let num_a = extract_episode_number(&a.0.to_str().unwrap());
-        let num_b = extract_episode_number(&b.0.to_str().unwrap());
-        num_a.cmp(&num_b)
-    });
-}
-
-fn extract_episode_number(s: &str) -> i32 {
-    s.trim_end_matches(".mp4").split_whitespace()
-        .filter_map(|word| word.parse::<i32>().ok())
-        .last()
-        .unwrap_or(0)
-}
-
-fn edit_for_windows_compatibility(name: &str) -> String {
-    let regex = Regex::new(r#"[\\/?%*:|"<>]+"#).unwrap();
-    regex.replace_all(name, "").to_string()
-}
-
-fn remove_dir_contents<P: AsRef<Path>>(path: P) {
-    if let Ok(_) = fs::remove_dir_all(path){}
-}
