@@ -16,3 +16,10 @@ macro_rules! info {
         eprintln!("\x1B[32m[✅] {}\x1B[0m", format_args!($($arg)*))
     };
 }
+
+#[macro_export]
+macro_rules! dl_ready {
+    ($($arg:tt)*) => {
+        eprintln!("\x1B[94m[💾] {}\x1B[0m", format_args!($($arg)*))
+    };
+}

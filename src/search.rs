@@ -4,12 +4,11 @@ use std::error::Error;
 use reqwest::Client;
 use crate::web;
 
-pub(crate) async fn search_over_json(name: Option<&String>, lang: Option<&String>) -> Result<Vec<(String, String, String)>, Box<dyn Error>>{
+pub(crate) async fn search_over_json(name: &String, lang: &String) -> Result<Vec<(String, String, String)>, Box<dyn Error>>{
 	let client = Client::builder().build()?;
 	let base_url = "https://neko-sama.fr";
 	let mut find = vec![];
-	if let Some(name) = name{
-		let resp = web::web_request(&client, &format!("https://neko-sama.fr/animes-search-{}.json", lang.unwrap_or(&String::from("vf")))).await.unwrap();
+		let resp = web::web_request(&client, &format!("https://neko-sama.fr/animes-search-{}.json", lang)).await.unwrap();
 
 		let rep = &*resp.text().await?;
 		let cleaned_name = clean_string(&name);
@@ -29,7 +28,6 @@ pub(crate) async fn search_over_json(name: Option<&String>, lang: Option<&String
 				find.push((x.title, x.nb_eps, format!("{}{}", base_url, x.url)));
 			}
 		}
-	}
 	Ok(find)
 }
 

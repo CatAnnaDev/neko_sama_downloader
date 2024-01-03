@@ -11,6 +11,7 @@ use std::{
 };
 use std::io::{stdin, stdout, Write};
 use std::process::Stdio;
+use clap::Parser;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
@@ -27,6 +28,8 @@ mod utils_check;
 mod vlc_playlist_builder;
 mod web;
 mod search;
+mod help;
+mod cmd_line_parser;
 
 // 120.0.6099.110
 
@@ -34,6 +37,7 @@ mod search;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    //let _ = kill_process();
     let binding = env::current_exe()?;
     let exe_path = binding.parent().unwrap();
 
@@ -45,17 +49,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     remove_dir_contents(&tmp_dl);
 
     // chrome driver
-    #[cfg(target_os = "macos")]
-        let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
-    #[cfg(target_os = "linux")]
+    #[cfg(target_family = "unix")]
         let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "windows")]
         let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
 
     // ffmpeg
-    #[cfg(target_os = "macos")]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
-    #[cfg(target_os = "linux")]
+    #[cfg(target_family = "unix")]
         let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
         let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
@@ -67,19 +67,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut chrome_check = false;
     let mut ffmpeg_check = false;
     let mut ublock_check = false;
-
-    let args: Vec<_> = env::args().collect::<_>();
-
-    let arg_type = args.iter().nth(1).expect("truc");
+    let new_args = cmd_line_parser::Args::parse();
 
     let mut processing_url = vec![];
     let mut thread = 0;
     let max_thread = std::thread::available_parallelism()?.get() * 4;
-    match arg_type.as_str() {
+    match new_args.scan.as_str() {
         "search" => {
 
-            let find = search::search_over_json(args.iter().nth(2), args.iter().nth(3)).await?;
-            thread = args.iter().last().unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+            let find = search::search_over_json(&new_args.url_or_search_word, &new_args.language).await?;
+            thread = new_args.thread as usize;
             processing_url.extend(find.clone());
 
             if thread > max_thread {
@@ -87,17 +84,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 thread = max_thread;
             }
 
+            let mut nb_episodes = 0;
             if find.len() <= 50 {
                 for (id, (name, nb_ep, url)) in find.iter().enumerate() {
-                    println!("({}): {name} ({nb_ep}):\n{url}\n", id + 1);
+                    dl_ready!("({}): {name} ({nb_ep}):", id + 1);
+                    println!("{url}\n");
+                    nb_episodes += nb_ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
                 }
-            }else { warn!("more than 50 seasons found") }
+            }else {
+                for (_, nb_ep, _) in find {
+                    nb_episodes += nb_ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
+                }
+                warn!("more than 50 seasons found")
+            }
 
             let mut s=String::new();
-            if args.iter().nth(2).unwrap() != " " {
-                print!("All is good for you to download ({}) seasons ? [Y/n]: ", processing_url.len());
+            if new_args.url_or_search_word != " " {
+                print!("All is good for you to download ({}) seasons ? so {} Eps [Y/n]: ", processing_url.len(), nb_episodes);
             }else {
-                print!("All is good for you to download NekoSama ? ({}) seasons ? [Y/n]: ", processing_url.len());
+                print!("All is good for you to download NekoSama ? ({}) seasons ? so {} Eps  [Y/n]: ", processing_url.len(), nb_episodes);
             }
             let _=stdout().flush();
             stdin().read_line(&mut s).expect("Did not enter a correct string");
@@ -112,9 +117,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         "download" => {
-            let url_test = args.iter().nth(2).expect("usage: ./anime_dl \"https://neko-sama.fr/anime/info/5821-sword-art-online_vf\"");
-            processing_url.extend(vec![("".to_string(),"".to_string(),url_test.to_string())]);
-            thread = args.iter().nth(3).unwrap_or(&String::from("1")).parse::<usize>().unwrap();
+            processing_url.extend(vec![("".to_string(),"".to_string(),new_args.url_or_search_word)]);
+            thread = new_args.thread as usize;
 
             if thread > max_thread {
                 warn!("Max thread for your cpu is between 1 and {}", max_thread);
@@ -122,22 +126,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         "help" => {
-            println!(r#"
-./anime_dl search "my super anime name" <vf or vostfr> <thread number>
-./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
-            "#);
+            help::print_help();
             exit(0);
         }
         _ => {}
     }
 
 
-
     if processing_url.is_empty() {
-        println!(r#"
-./anime_dl search "my super anime name" <vf or vostfr> <thread number>
-./anime_dl download "https://neko-sama.fr/anime/info/5821-sword-art-online_vf" <thread number>
-            "#);
+        help::print_help();
         exit(0);
     }
 
@@ -155,17 +152,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
 
-            #[cfg(target_os = "macos")]
-            if x.file_name().to_str().unwrap().ends_with("") {
-                if x.file_name().to_str().unwrap().contains("chromedriver") {
-                    chrome_check = true;
-                }
-                if x.file_name().to_str().unwrap().contains("ffmpeg") {
-                    ffmpeg_check = true;
-                }
-            }
-
-            #[cfg(target_os = "linux")]
+            #[cfg(target_family = "unix")]
             if x.file_name().to_str().unwrap().ends_with("") {
                 if x.file_name().to_str().unwrap().contains("chromedriver") {
                     chrome_check = true;
@@ -276,6 +263,7 @@ async fn start(
     prefs
         .add_extension(ublock)
         .expect("can't install ublock origin");
+
 
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
     driver.minimize_window().await?;
@@ -395,6 +383,14 @@ async fn start(
         time, good, error
     );
 
+    driver.quit().await?;
+    let _ = kill_process();
+    Ok(())
+}
+
+fn kill_process() -> Result<(), Box<dyn Error>>{
+    #[cfg(target_os = "windows")]
+        let _ = Command::new("taskkill").args(["/t","/f","/im","chromedriver.exe"]).stdout(Stdio::null()).spawn()?;
     Ok(())
 }
 
@@ -483,7 +479,5 @@ fn edit_for_windows_compatibility(name: &str) -> String {
 }
 
 fn remove_dir_contents<P: AsRef<Path>>(path: P) {
-    if let Ok(_) = fs::remove_dir_all(path){
-
-    }
+    if let Ok(_) = fs::remove_dir_all(path){}
 }
