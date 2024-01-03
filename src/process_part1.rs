@@ -161,7 +161,6 @@ pub async fn start(
     );
 
 	driver.quit().await?;
-	let _ = utils_data::kill_process();
 	Ok(())
 }
 

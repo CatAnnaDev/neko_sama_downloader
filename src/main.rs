@@ -9,6 +9,7 @@ use std::{
 };
 use std::io::{stdin, stdout, Write};
 use clap::Parser;
+use crate::search::ProcessingUrl;
 
 
 mod html_parser;
@@ -26,6 +27,8 @@ mod process_part1;
 // 120.0.6099.110
 
 // https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json
+
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -77,27 +80,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let mut nb_episodes = 0;
             if find.len() <= 50 {
-                for (id, (name, nb_ep, url)) in find.iter().enumerate() {
-                    dl_ready!("({}): {name} ({nb_ep}):", id + 1);
-                    println!("{url}\n");
-                    nb_episodes += nb_ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
+                for (id, processing_url) in find.iter().enumerate() {
+                    dl_ready!("({}): {} ({}):", id + 1, processing_url.name, processing_url.ep);
+                    println!("{}\n", processing_url.url);
+                    nb_episodes += processing_url.ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
                 }
             }else {
-                for (_, nb_ep, _) in find {
-                    nb_episodes += nb_ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
+                for x in find {
+                    nb_episodes += x.ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);
                 }
                 warn!("more than 50 seasons found")
             }
-
+            let proc_len = processing_url.len();
             let mut s=String::new();
-            if processing_url.len() == 0{
+            if proc_len == 0{
                 warn!("Noting found retry with another keyword");
                 exit(0);
             }
             if new_args.url_or_search_word != " "  {
-                print!("All is good for you to download ({}) seasons ? so {} Eps [Y/n]: ", processing_url.len(), nb_episodes);
+                print!("All is good for you to download ({}) seasons ? so {} Eps [Y/n] or [1-{}]: ", proc_len, nb_episodes, proc_len);
             }else {
-                print!("All is good for you to download NekoSama ? ({}) seasons ? so {} Eps  [Y/n]: ", processing_url.len(), nb_episodes);
+                print!("All is good for you to download NekoSama ? ({}) seasons ? so {} Eps  [Y/n]: ", proc_len, nb_episodes);
             }
             let _=stdout().flush();
             stdin().read_line(&mut s).expect("Did not enter a correct string");
@@ -107,12 +110,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if let Some('\r')=s.chars().next_back() {
                 s.pop();
             }
+            if let Ok(mut pick) = s.parse::<usize>(){
+                if pick <= 0{ pick = 0; }
+                if pick >= proc_len{ pick = proc_len; }
+
+                let url = processing_url[pick - 1].clone();
+                processing_url.clear();
+                processing_url.append(&mut vec![url]);
+            }
             if s == "n" {
                 exit(0);
             }
         }
         "download" => {
-            processing_url.extend(vec![("".to_string(),"".to_string(),new_args.url_or_search_word)]);
+            let x = ProcessingUrl{
+                name: "".to_string(),
+                ep: "".to_string(),
+                url: new_args.url_or_search_word,
+            };
+            processing_url.extend(vec![x]);
         }
         _ => {}
     }
@@ -166,10 +182,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let global_time = Instant::now();
 
-        for (_, _, url) in processing_url {
-            info!("Process: {url}");
+        for x in processing_url {
+            info!("Process: {}", x.url);
             process_part1::start(
-                &url,
+                &x.url,
                 exe_path,
                 &tmp_dl,
                 &chrome_path,

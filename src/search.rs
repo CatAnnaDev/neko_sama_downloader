@@ -3,8 +3,14 @@ use serde_derive::Serialize;
 use std::error::Error;
 use reqwest::Client;
 use crate::{warn, web};
+#[derive(Clone)]
+pub struct ProcessingUrl {
+	pub name: String,
+	pub ep: String,
+	pub url: String,
+}
 
-pub(crate) async fn search_over_json(name: &String, lang: &String) -> Result<Vec<(String, String, String)>, Box<dyn Error>>{
+pub(crate) async fn search_over_json(name: &String, lang: &String) -> Result<Vec<ProcessingUrl>, Box<dyn Error>>{
 	let mut edit_lang = lang.to_lowercase();
 	if edit_lang != "vf".to_string() && edit_lang != "vostfr".to_string() {
 		warn!("\"{edit_lang}\" doesn't exist, replaced by \"vf\" automatically, use only \"vf\" or \"vostfr\"");
@@ -31,7 +37,12 @@ pub(crate) async fn search_over_json(name: &String, lang: &String) -> Result<Vec
 				|| levenshtein_similarity > 0.8
 				|| cleaned_title.contains(&cleaned_name)
 			{
-				find.push((x.title, x.nb_eps, format!("{}{}", base_url, x.url)));
+				let x = ProcessingUrl{
+					name: x.title,
+					ep: x.nb_eps,
+					url: format!("{}{}", base_url, x.url),
+				};
+				find.push(x);
 			}
 		}
 	Ok(find)
