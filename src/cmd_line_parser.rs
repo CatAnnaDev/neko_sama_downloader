@@ -3,7 +3,12 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author = "PsykoDev", version, about, long_about = None)]
 pub struct Args {
-	#[arg(short = 's', long, default_value = "search", help = "search or download")]
+	#[arg(
+	short = 's',
+	long,
+	default_value = "search",
+	help = "search or download"
+	)]
 	pub scan: String,
 
 	#[arg(short = 'u', long)]
@@ -15,4 +20,3 @@ pub struct Args {
 	#[arg(short = 't', long, default_value_t = 1)]
 	pub thread: u8,
 }
-

@@ -114,7 +114,7 @@ pub async fn fetch_url(
                 .as_bytes(),
             &mut out,
         )
-            .expect("Error copy");
+	        .expect("Error copy");
     } else {
         error!("Error 404")
     }

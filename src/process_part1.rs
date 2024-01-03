@@ -4,9 +4,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
+
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, WebDriver};
+
 use crate::{error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
 use crate::thread_pool::ThreadPool;
 
@@ -28,7 +30,9 @@ pub async fn start(
 			"--disable-logging",
 			"--disable-logging-redirect",
 			"--port=6969",
-		]).stdout(Stdio::null()).spawn()?;
+		])
+		.stdout(Stdio::null())
+		.spawn()?;
 
 	let before = Instant::now();
 
@@ -41,7 +45,6 @@ pub async fn start(
 		.add_extension(ublock)
 		.expect("can't install ublock origin");
 
-
 	let driver = WebDriver::new("http://localhost:6969", prefs).await?;
 	driver.minimize_window().await?;
 
@@ -53,7 +56,8 @@ pub async fn start(
 
 	info!("Scan Main Page");
 
-	let mut episode_url = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
+	let mut episode_url =
+		scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl).await?;
 
 	info!("total found: {}", &episode_url.len());
 
@@ -97,16 +101,17 @@ pub async fn start(
 			if file_path.is_file() {
 				let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
 
-				let name = exe_path
-					.join(&save_path)
-					.join(utils_data::edit_for_windows_compatibility(
-						&file_path
-							.file_name()
-							.unwrap()
-							.to_str()
-							.unwrap()
-							.replace(".m3u8", ".mp4"),
-					));
+				let name =
+					exe_path
+						.join(&save_path)
+						.join(utils_data::edit_for_windows_compatibility(
+							&file_path
+								.file_name()
+								.unwrap()
+								.to_str()
+								.unwrap()
+								.replace(".m3u8", ".mp4"),
+						));
 
 				let _ = &mut save.push((name.clone(), &save_path));
 
@@ -163,8 +168,6 @@ pub async fn start(
 	driver.quit().await?;
 	Ok(())
 }
-
-
 
 pub async fn scan_main_page(
 	save_path: &mut String,

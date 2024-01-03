@@ -1,4 +1,3 @@
-
 // chrome driver
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
@@ -18,11 +17,9 @@ pub(crate) static DRIVER_PATH: &str =
 pub(crate) static DRIVER_PATH: &str =
     "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
 
-
 // ublock from github for chrome driver
 pub(crate) static UBLOCK_PATH: &str =
     "https://github.com/PsykoDev/neko_sama_downloader/raw/main/utils/uBlock-Origin.crx";
-
 
 // ffmpeg
 #[cfg(target_os = "windows")]

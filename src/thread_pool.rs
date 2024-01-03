@@ -29,8 +29,8 @@ impl ThreadPool {
     }
 
     pub fn execute<F>(&mut self, f: F)
-        where
-            F: FnOnce() + Send + 'static,
+	    where
+		    F: FnOnce() + Send + 'static,
     {
         let job = Job::Task(Box::new(f));
         let _ = &self.queue.push(job);
