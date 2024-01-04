@@ -11,6 +11,7 @@ pub struct ProcessingUrl {
     pub name: String,
     pub ep: String,
     pub url: String,
+    pub genre: String,
 }
 
 pub(crate) async fn search_over_json(
@@ -54,6 +55,7 @@ pub(crate) async fn search_over_json(
                 name: x.title,
                 ep: x.nb_eps,
                 url: format!("{}{}", base_url, x.url),
+                genre: x.genres.join(", ").replace("c0m1dy", "comedy"),
             };
             if *debug {
                 debug!("Search engine {:#?}", x);

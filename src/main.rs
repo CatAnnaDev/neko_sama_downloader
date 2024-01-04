@@ -19,7 +19,7 @@ mod web;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let new_args = cmd_line_parser::Args::parse();
-    info!("Debug print is {}", new_args.debug);
+    info!("Config:\nAction:\t\t{}\nUrl or Search:\t{}\nLanguage:\t{}\nThreads:\t{}\nDebug:\t\t{}", new_args.scan, new_args.url_or_search_word, new_args.language, new_args.thread, new_args.debug);
     let path = utils_check::check()?;
 
     let mut chrome_check = false;
@@ -49,10 +49,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if find.len() <= 50 {
                 for (id, processing_url) in find.iter().enumerate() {
                     dl_ready!(
-                        "({}): {} ({}):",
+                        "({}): {} ({})\n\t[{}]:",
                         id + 1,
                         processing_url.name,
-                        processing_url.ep
+                        processing_url.ep,
+                        processing_url.genre
                     );
                     println!("{}\n", processing_url.url);
                     nb_episodes += processing_url
@@ -113,6 +114,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 name: "".to_string(),
                 ep: "".to_string(),
                 url: new_args.url_or_search_word,
+                genre: "".to_string(),
             };
             processing_url.extend(vec![x]);
         }
