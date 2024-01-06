@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, exit, Stdio};
+use std::process::{exit, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -13,7 +13,7 @@ use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
 
 pub async fn start(
-    url_test: &String,
+    url_test: &str,
     exe_path: &Path,
     tmp_dl: &PathBuf,
     chrome: &PathBuf,
@@ -85,7 +85,7 @@ pub async fn start(
     let (good, error) =
         get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl, debug).await?;
 
-    if good == 0{
+    if good == 0 {
         error!("Nothing found or url down");
         exit(0);
     }
@@ -239,7 +239,7 @@ pub async fn get_real_video_link(
                         }
                         Some(url) => {
                             if *debug {
-                                // debug!("js return: {:?}", script.json())
+                                // debug!("js return: {:#?}", script.json())
                             }
                             html_parser::fetch_url(
                                 url,

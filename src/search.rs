@@ -15,8 +15,8 @@ pub struct ProcessingUrl {
 }
 
 pub(crate) async fn search_over_json(
-    name: &String,
-    lang: &String,
+    name: &str,
+    lang: &str,
     debug: &bool,
 ) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let mut edit_lang = lang.to_lowercase();
@@ -36,7 +36,7 @@ pub(crate) async fn search_over_json(
     .unwrap();
 
     let rep = resp.text().await?;
-    let cleaned_name = clean_string(&name);
+    let cleaned_name = clean_string(name);
 
     let v = serde_json::from_str::<Root>(&rep)?;
 

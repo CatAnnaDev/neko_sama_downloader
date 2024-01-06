@@ -1,8 +1,11 @@
 #![feature(pattern)]
-use crate::search::ProcessingUrl;
-use clap::Parser;
+
 use std::io::{stdin, stdout, Write};
 use std::{error::Error, fs, process::exit, time::Instant};
+
+use clap::Parser;
+
+use crate::search::ProcessingUrl;
 
 mod cmd_line_parser;
 mod html_parser;
@@ -19,7 +22,21 @@ mod web;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let new_args = cmd_line_parser::Args::parse();
-    info!("Config:\nAction:\t\t{}\nUrl or Search:\t{}\nLanguage:\t{}\nThreads:\t{}\nDebug:\t\t{}", new_args.scan, new_args.url_or_search_word, new_args.language, new_args.thread, new_args.debug);
+
+    info!(
+        "Config:\n\
+    Action:\t\t{}\n\
+    Url or Search:\t{}\n\
+    Language:\t{}\n\
+    Threads:\t{}\n\
+    Debug:\t\t{}",
+        new_args.scan,
+        new_args.url_or_search_word,
+        new_args.language,
+        new_args.thread,
+        new_args.debug
+    );
+
     let path = utils_check::check()?;
 
     let mut chrome_check = false;
@@ -84,15 +101,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ",new_args.language);
             }
             let _ = stdout().flush();
-            stdin()
-                .read_line(&mut s)
-                .expect("Did not enter a correct string");
+            stdin().read_line(&mut s).expect("Did not enter a correct string");
+
             if let Some('\n') = s.chars().next_back() {
                 s.pop();
             }
             if let Some('\r') = s.chars().next_back() {
                 s.pop();
             }
+
             if let Ok(mut pick) = s.parse::<usize>() {
                 if pick <= 0 {
                     pick = 1;
@@ -160,9 +177,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-    info!("chromedriver is present\t? {chrome_check}");
-    info!("ffmpeg is present\t\t? {ffmpeg_check}");
-    info!("uBlock Origin is present\t? {ublock_check}");
+
     if !ublock_check {
         utils_check::download(static_data::UBLOCK_PATH, &path.ublock_destination)
             .await
