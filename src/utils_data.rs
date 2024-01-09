@@ -12,6 +12,12 @@ pub fn kill_process() -> Result<(), Box<dyn Error>> {
         .args(["/t", "/f", "/im", "chromedriver.exe"])
         .stdout(Stdio::null())
         .spawn()?;
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    let _ = Command::new("kill")
+        .arg("$(ps aux | grep \"chromedriver\" | grep -v grep | awk '{print $2}')")
+        .stdout(Stdio::null())
+        .spawn()?;
     Ok(())
 }
 pub fn time_to_human_time(time: Instant) -> String {

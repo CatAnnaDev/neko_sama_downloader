@@ -1,17 +1,15 @@
 #![feature(pattern)]
 
-use std::io::{stdin, stdout, Write};
-use std::{error::Error, fs, process::exit, time::Instant};
-
+use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}};
 use clap::Parser;
-
-use crate::search::ProcessingUrl;
 
 mod cmd_line_parser;
 mod html_parser;
 mod log_color;
 mod process_part1;
 mod search;
+use crate::search::ProcessingUrl;
+
 mod static_data;
 mod thread_pool;
 mod utils_check;
@@ -19,21 +17,39 @@ mod utils_data;
 mod vlc_playlist_builder;
 mod web;
 
+enum Scan {
+    Download,
+    Search
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
+    //let running = Arc::new(AtomicBool::new(true));
+    //let r = running.clone();
+    //ctrlc::set_handler(move || {
+    //    r.store(false, Ordering::SeqCst);
+    //}).expect("Error setting Ctrl-C handler");
+    //thread::spawn(move ||{
+    //    while running.load(Ordering::SeqCst) {
+    //    }
+    //    utils_data::kill_process().expect("can't kill chromedriver");
+    //    exit(0);
+    //});
+
     let new_args = cmd_line_parser::Args::parse();
 
     info!(
         "Config:\n\
-    Action:\t\t{}\n\
     Url or Search:\t{}\n\
     Language:\t{}\n\
     Threads:\t{}\n\
+    Vlc playlist:\t{}\n\
     Debug:\t\t{}",
-        new_args.scan,
         new_args.url_or_search_word,
         new_args.language,
         new_args.thread,
+        new_args.vlc_playlist,
         new_args.debug
     );
 
@@ -51,8 +67,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let mut processing_url = vec![];
-    match new_args.scan.as_str() {
-        "search" => {
+    let mut _scan = Scan::Search;
+
+    if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") { _scan = Scan::Download; }
+    else { _scan = Scan::Search; }
+
+    match _scan {
+        Scan::Search => {
             let find = search::search_over_json(
                 &new_args.url_or_search_word,
                 &new_args.language,
@@ -101,7 +122,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ",new_args.language);
             }
             let _ = stdout().flush();
-            stdin().read_line(&mut s).expect("Did not enter a correct string");
+            stdin()
+                .read_line(&mut s)
+                .expect("Did not enter a correct string");
 
             if let Some('\n') = s.chars().next_back() {
                 s.pop();
@@ -126,7 +149,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 exit(0);
             }
         }
-        "download" => {
+        Scan::Download => {
             let x = ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
@@ -134,13 +157,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 genre: "".to_string(),
             };
             processing_url.extend(vec![x]);
-        }
-        _ => {
-            warn!(
-                "\"{}\" doesn't exist use search or download only",
-                new_args.scan
-            );
-            exit(0);
         }
     }
 
@@ -198,6 +214,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     &path.ffmpeg_path,
                     thread,
                     &new_args.debug,
+                    &new_args.vlc_playlist,
                 )
                 .await?;
             }

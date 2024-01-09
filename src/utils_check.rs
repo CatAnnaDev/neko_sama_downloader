@@ -31,13 +31,13 @@ pub fn check() -> Result<AllPath, Box<dyn Error>> {
     utils_data::remove_dir_contents(&tmp_dl);
 
     // chrome driver
-    #[cfg(target_family = "unix")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "windows")]
     let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
 
     // ffmpeg
-    #[cfg(target_family = "unix")]
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
     let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));

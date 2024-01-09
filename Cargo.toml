@@ -41,3 +41,5 @@ serde = "*"
 serde_json = "*"
 strsim = "*"
 clap = { version = "*", features = ["derive"] }
+libc = "0.2.151"
+ctrlc = "3.4.2"

@@ -21,10 +21,11 @@ pub async fn start(
     ffmpeg: &PathBuf,
     mut thread: usize,
     debug: &bool,
+    vlc_playlist: &bool,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
-    let _ = Command::new(chrome)
+    let mut child_process = Command::new(chrome)
         .args([
             "--ignore-certificate-errors",
             "--disable-popup-blocking",
@@ -89,6 +90,11 @@ pub async fn start(
         error!("Nothing found or url down");
         exit(0);
     }
+
+    // kill chromedriver
+    if let Ok(_) = driver.close_window().await{}
+    if let Ok(_) = driver.quit().await{}
+    child_process.kill()?;
 
     if thread > good as usize {
         warn!("update thread count from {thread} to {good}");
@@ -165,11 +171,11 @@ pub async fn start(
     }
 
     progress_bar.finish();
-    driver.close_window().await?;
+    //if let Ok(_) = driver.close_window().await{}
     info!("Clean tmp dir!");
     utils_data::remove_dir_contents(tmp_dl);
 
-    if good >= 2 {
+    if good >= 2 && *vlc_playlist {
         info!("Build vlc playlist");
         utils_data::custom_sort_vlc(&mut save_path_vlc);
         vlc_playlist_builder::new(save_path_vlc)?;
@@ -186,7 +192,7 @@ pub async fn start(
         time, good, error
     );
 
-    driver.quit().await?;
+    // if let Ok(_) = driver.quit().await{}
     Ok(())
 }
 
