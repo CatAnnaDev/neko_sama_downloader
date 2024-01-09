@@ -1,5 +1,5 @@
 # Usage
-![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/0cbe02a8-446e-44c8-9ae6-3896cb09a47a)
+![Screenshot 2024-01-09 at 22 18 37](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/c3e5a270-f87d-4612-ba5a-4bef3907363b)
 
 ```txt
 ./anime_dl -s "anime name" -l <vf | vostfr> ( optional default=vf ) -t <thread number> ( optional default=1 )
