@@ -2,8 +2,8 @@
 ![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/0cbe02a8-446e-44c8-9ae6-3896cb09a47a)
 
 ```txt
-./anime_dl -s search -u "anime name" -l <vf | vostfr> ( optional default=vf ) -t <thread number> ( optional default=1 )
-./anime_dl -s download -u "url" -t <thread number> ( optional default=1 )
+./anime_dl -s "anime name" -l <vf | vostfr> ( optional default=vf ) -t <thread number> ( optional default=1 )
+./anime_dl -s "url" -t <thread number> ( optional default=1 )
 ./anime_dl --help
 ```
 

@@ -14,8 +14,8 @@ pub fn kill_process() -> Result<(), Box<dyn Error>> {
         .spawn()?;
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let _ = Command::new("kill")
-        .arg("$(ps aux | grep \"chromedriver\" | grep -v grep | awk '{print $2}')")
+    let _ = Command::new("killall")
+        .arg("\"chromedriver\"")
         .stdout(Stdio::null())
         .spawn()?;
     Ok(())

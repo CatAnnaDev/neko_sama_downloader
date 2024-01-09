@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fs;
+use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command, Stdio};
 use std::sync::mpsc;
@@ -86,14 +87,34 @@ pub async fn start(
     let (good, error) =
         get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl, debug).await?;
 
+    if error > 0 {
+        let mut s = String::new();
+        print!("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ");
+
+        let _ = stdout().flush();
+        stdin().read_line(&mut s).expect("Did not enter a correct string");
+        if s.trim() == "n" {
+            exit(0);
+        }
+    }
+
     if good == 0 {
         error!("Nothing found or url down");
         exit(0);
     }
 
     // kill chromedriver
+    if *debug {
+        debug!("chromedriver close_window");
+    }
     if let Ok(_) = driver.close_window().await{}
+    if *debug {
+        debug!("chromedriver quit");
+    }
     if let Ok(_) = driver.quit().await{}
+    if *debug {
+        debug!("chromedriver kill process");
+    }
     child_process.kill()?;
 
     if thread > good as usize {

@@ -1,7 +1,9 @@
 #![feature(pattern)]
-
-use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}};
+use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use clap::Parser;
+use signal_hook::consts::*;
 
 mod cmd_line_parser;
 mod html_parser;
@@ -25,17 +27,19 @@ enum Scan {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
-    //let running = Arc::new(AtomicBool::new(true));
-    //let r = running.clone();
-    //ctrlc::set_handler(move || {
-    //    r.store(false, Ordering::SeqCst);
-    //}).expect("Error setting Ctrl-C handler");
-    //thread::spawn(move ||{
-    //    while running.load(Ordering::SeqCst) {
-    //    }
-    //    utils_data::kill_process().expect("can't kill chromedriver");
-    //    exit(0);
-    //});
+    let running = Arc::new(AtomicBool::new(false));
+
+    for sig in TERM_SIGNALS {
+        signal_hook::flag::register(*sig, Arc::clone(&running))?;
+    }
+
+    thread::spawn(move ||{
+        while !running.load(Ordering::Relaxed) {
+        }
+        warn!("Kill chromedriver");
+        utils_data::kill_process().expect("can't kill chromedriver");
+        exit(0);
+    });
 
     let new_args = cmd_line_parser::Args::parse();
 
@@ -126,14 +130,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .read_line(&mut s)
                 .expect("Did not enter a correct string");
 
-            if let Some('\n') = s.chars().next_back() {
-                s.pop();
-            }
-            if let Some('\r') = s.chars().next_back() {
-                s.pop();
-            }
-
-            if let Ok(mut pick) = s.parse::<usize>() {
+            if let Ok(mut pick) = s.trim().parse::<usize>() {
                 if pick <= 0 {
                     pick = 1;
                 }
@@ -145,7 +142,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 processing_url.clear();
                 processing_url.append(&mut vec![url]);
             }
-            if s == "n" {
+            if s.trim() == "n" {
                 exit(0);
             }
         }
