@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut ublock_check = false;
 
     let mut thread = new_args.thread as usize;
-    let max_thread = std::thread::available_parallelism()?.get() * 4;
+    let max_thread = thread::available_parallelism()?.get() * 4;
     if thread > max_thread {
         warn!("Max thread for your cpu is between 1 and {}", max_thread);
         thread = max_thread;
