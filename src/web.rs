@@ -1,8 +1,11 @@
 use reqwest::{Client, Response};
 use std::path::PathBuf;
 use std::process::Command;
+use tokio::time::Instant;
+use crate::warn;
 
 pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
+    let time = Instant::now();
     let _ = Command::new(ffmpeg)
         .args([
             "-protocol_whitelist",
@@ -19,6 +22,11 @@ pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
         ])
         .output()
         .unwrap();
+    let end = time.elapsed().as_secs();
+
+    if end < 1{
+        warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
+    }
     1
 }
 

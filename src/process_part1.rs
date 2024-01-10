@@ -23,6 +23,7 @@ pub async fn start(
     mut thread: usize,
     debug: &bool,
     vlc_playlist: &bool,
+    ignore_alert: &bool,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
@@ -87,7 +88,7 @@ pub async fn start(
     let (good, error) =
         get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl, debug).await?;
 
-    if error > 0 {
+    if error > 0 && *ignore_alert {
         let mut s = String::new();
         print!("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ");
 
@@ -226,12 +227,25 @@ pub async fn scan_main_page(
     debug: &bool,
 ) -> Result<Vec<(String, String)>, Box<dyn Error>> {
     fs::create_dir_all(tmp_dl)?;
-
     save_path.push_str(&utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
     ));
 
-    fs::create_dir_all(tmp_dl.parent().unwrap().join(save_path))?;
+    let season_path = tmp_dl.parent().unwrap().join(save_path);
+
+    if fs::try_exists(season_path.clone()).unwrap(){
+        warn!("Path already exist\n{}", season_path.display());
+        let mut s = String::new();
+        print!("Do you want delete this path press Y, or N to ignore and continue: ");
+        let _ = stdout().flush();
+        stdin().read_line(&mut s).expect("Did not enter a correct string");
+        if s.to_lowercase().trim() == "y"{
+            fs::remove_dir_all(season_path.clone())?;
+        }else {
+            info!("Okay path ignored")
+        };
+    }
+     fs::create_dir_all(season_path)?;
     Ok(html_parser::recursive_find_url(&driver, url_test, base_url, debug).await?)
 }
 

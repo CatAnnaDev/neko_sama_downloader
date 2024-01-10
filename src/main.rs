@@ -1,4 +1,6 @@
 #![feature(pattern)]
+#![feature(fs_try_exists)]
+
 use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -41,7 +43,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
         exit(0);
     });
 
-    let new_args = cmd_line_parser::Args::parse();
+    let mut new_args = cmd_line_parser::Args::parse();
+    header!(r#"
+  _   _      _                   _ _
+ | \ | | ___| | _____         __| | |
+ |  \| |/ _ \ |/ / _ \ _____ / _` | |
+ | |\  |  __/   < (_) |_____| (_| | |
+ |_| \_|\___|_|\_\___/       \__,_|_|
+                          by PsykoDev
+"#);
+
+    if new_args.url_or_search_word.is_empty(){
+        let mut s = String::new();
+        warn!("prefers use ./anime_dl -h");
+        print!("Enter url to direct download or keyword to search: ");
+        let _ = stdout().flush();
+        stdin()
+            .read_line(&mut s)
+            .expect("Did not enter a correct string");
+
+        new_args.url_or_search_word = s.trim().to_string();
+    }
 
     info!(
         "Config:\n\
@@ -49,12 +71,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Language:\t{}\n\
     Threads:\t{}\n\
     Vlc playlist:\t{}\n\
+    Ignore Alert:\t{}\n\
     Debug:\t\t{}",
         new_args.url_or_search_word,
         new_args.language,
         new_args.thread,
         new_args.vlc_playlist,
-        new_args.debug
+        new_args.debug,
+        new_args.ignore_alert_missing_episode
     );
 
     let path = utils_check::check()?;
@@ -212,6 +236,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     thread,
                     &new_args.debug,
                     &new_args.vlc_playlist,
+                    &new_args.ignore_alert_missing_episode,
                 )
                 .await?;
             }
