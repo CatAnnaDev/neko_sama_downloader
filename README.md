@@ -1,3 +1,4 @@
+[![All release](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml/badge.svg)](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml)
 # Usage
 ![Screenshot 2024-01-10 at 01 05 46](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/f4e6eaf9-4e52-4121-8343-7f251466e5e2)
 
