@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::{exit, Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
-
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, WebDriver};
@@ -56,37 +55,27 @@ pub async fn start(
         .add_extension(ublock)
         .expect("can't install ublock origin");
 
+
     if *debug {
         debug!("connect to chrome driver");
     }
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
     driver.minimize_window().await?;
-
     driver
         .set_page_load_timeout(Duration::from_secs(20))
         .await?;
-
     driver.goto(url_test).await?;
 
     info!("Scan Main Page");
 
-    let mut episode_url =
-        scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug).await?;
+    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client).await?;
 
-    info!("total found: {}", &episode_url.len());
+    info!("total found: {}", good);
 
-    if *debug {
-        debug!("total found: {:#?}", &episode_url);
-    }
-
-    if &episode_url.len() == &0usize {
+    if good == 0 {
         driver.quit().await?;
         return Ok(());
     }
-
-    info!("Get all .m3u8");
-    let (good, error) =
-        get_real_video_link(&mut episode_url, &driver, &client, &tmp_dl, debug).await?;
 
     if error > 0 && *ignore_alert {
         let mut s = String::new();
@@ -136,7 +125,7 @@ pub async fn start(
 
     let (tx, rx) = mpsc::channel();
 
-    let mut pool = ThreadPool::new(thread, episode_url.len());
+    let mut pool = ThreadPool::new(thread, good as usize);
 
     let mut save_path_vlc = vec![];
 
@@ -188,7 +177,7 @@ pub async fn start(
 
     drop(tx);
 
-    for _ in rx.iter().take(episode_url.len()) {
+    for _ in rx.iter().take(good as usize) {
         progress_bar.inc(1);
     }
 
@@ -213,22 +202,21 @@ pub async fn start(
         "Done in: {} for {} episodes and {} error",
         time, good, error
     );
-
-    // if let Ok(_) = driver.quit().await{}
     Ok(())
 }
 
 pub async fn scan_main_page(
     save_path: &mut String,
-    driver: &WebDriver,
+    drivers: &WebDriver,
     url_test: &str,
     base_url: &str,
     tmp_dl: &PathBuf,
     debug: &bool,
-) -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    client: &Client,
+) -> Result<(u16, u16), Box<dyn Error>> {
     fs::create_dir_all(tmp_dl)?;
     save_path.push_str(&utils_data::edit_for_windows_compatibility(
-        &driver.title().await?.replace(" - Neko Sama", ""),
+        &drivers.title().await?.replace(" - Neko Sama", ""),
     ));
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
@@ -246,64 +234,5 @@ pub async fn scan_main_page(
         };
     }
      fs::create_dir_all(season_path)?;
-    Ok(html_parser::recursive_find_url(&driver, url_test, base_url, debug).await?)
-}
-
-pub async fn get_real_video_link(
-    episode_url: &mut Vec<(String, String)>,
-    driver: &WebDriver,
-    client: &Client,
-    tmp_dl: &PathBuf,
-    debug: &bool,
-) -> Result<(u16, u16), Box<dyn Error>> {
-    let mut nb_found = 0u16;
-    let mut nb_error = 0u16;
-    for (name, url) in episode_url {
-        if url.starts_with("http") {
-            driver.goto(&url).await?;
-
-            if *debug {
-                debug!("execute js for {}", name);
-            }
-            match driver
-                .execute(
-                    r#"jwplayer().play(); let ret = jwplayer().getPlaylistItem(); return ret;"#,
-                    vec![],
-                )
-                .await
-            {
-                Ok(script) => {
-                    info!("Get m3u8 for: {}", name);
-                    match script.json()["file"].as_str() {
-                        None => {
-                            error!("can't exec js for {name}")
-                        }
-                        Some(url) => {
-                            if *debug {
-                                // debug!("js return: {:#?}", script.json())
-                            }
-                            html_parser::fetch_url(
-                                url,
-                                &name.trim().replace(":", ""),
-                                &tmp_dl,
-                                &client,
-                                debug,
-                            )
-                            .await?;
-                            nb_found += 1;
-                        }
-                    }
-                }
-                Err(e) => {
-                    error!("Can't get .m3u8 {name} (probably 404)\n{:?}", e);
-                    nb_error += 1;
-                }
-            }
-        } else {
-            error!("Error with: {name} url: {url}");
-            nb_error += 1;
-        }
-    }
-    println!();
-    Ok((nb_found, nb_error))
+    Ok(html_parser::recursive_find_url(&drivers, url_test, base_url, debug, &client, &tmp_dl).await?)
 }
