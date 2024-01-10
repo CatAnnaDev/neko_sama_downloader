@@ -44,7 +44,7 @@ jobs:
     needs: test
     runs-on: ${{ matrix.OS }}
     env:
-      NAME: neko_sama_downloader # change with the name of your project
+      NAME: anime_dl # change with the name of your project
       TARGET: ${{ matrix.TARGET }}
       OS: ${{ matrix.OS }}
     steps:
@@ -63,7 +63,7 @@ jobs:
           # dependencies are only needed on ubuntu as that's the only place where
           # we make cross-compilation
           if [[ $OS =~ ^ubuntu.*$ ]]; then
-            sudo apt-get install -qq crossbuild-essential-arm64 crossbuild-essential-armhf libssl-dev 
+            sudo apt-get install -qq crossbuild-essential-arm64c libssl-dev openssl
           fi
 
           # some additional configuration for cross-compilation on linux
@@ -89,7 +89,7 @@ jobs:
           else
             TAG=$GITHUB_SHA
           fi
-          mv ./home/runner/work/neko_sama_downloader/neko_sama_downloader/target/$TARGET/release/$EXEC ./$EXEC
+          mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
       - name: Archive artifact
         uses: actions/upload-artifact@v2
