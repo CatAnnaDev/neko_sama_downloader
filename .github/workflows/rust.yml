@@ -97,6 +97,7 @@ jobs:
           name: result
           path: |
             ./artifacts
+          compression-level: 9
 
   # deploys to github releases on tag
   deploy:
@@ -109,6 +110,7 @@ jobs:
         with:
           name: result
           path: ./artifacts
+          compression-level: 9
       - name: List
         run: find ./artifacts
       - name: Release
