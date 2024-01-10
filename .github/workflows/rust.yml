@@ -100,7 +100,9 @@ jobs:
 
   # deploys to github releases on tag
   deploy:
-    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+        - run: echo "Deploying to $GITHUB_REF"
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
