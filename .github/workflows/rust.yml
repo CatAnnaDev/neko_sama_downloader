@@ -63,7 +63,7 @@ jobs:
           # dependencies are only needed on ubuntu as that's the only place where
           # we make cross-compilation
           if [[ $OS =~ ^ubuntu.*$ ]]; then
-            sudo apt-get install -qq crossbuild-essential-arm64c libssl-dev openssl
+            sudo apt-get install -qq crossbuild-essential-arm64 libssl-dev openssl
           fi
 
           # some additional configuration for cross-compilation on linux
