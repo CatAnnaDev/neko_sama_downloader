@@ -1,5 +1,6 @@
 # Usage
-![Screenshot 2024-01-09 at 22 18 37](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/c3e5a270-f87d-4612-ba5a-4bef3907363b)
+![Screenshot 2024-01-10 at 01 05 46](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/f4e6eaf9-4e52-4121-8343-7f251466e5e2)
+
 
 ```txt
 ./anime_dl -s "anime name" -l <vf | vostfr> ( optional default=vf ) -t <thread number> ( optional default=1 )
@@ -11,7 +12,7 @@
   - Multi thread to download and process video 
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
-  - Can search all seasons by name and download 
+  - Can search all seasons by same name and download all found seasons
   - ublock origin is added by default
 
 # Note
@@ -25,8 +26,7 @@
  - work on macOS windows linux
 
 # Demo
-- Download season: https://youtu.be/n_AlCJcqX6Q
-- Download with search: https://youtu.be/mkgSpIDFO6Y
+- full demo : https://youtu.be/8mfNNf3KhNY
 
 ![](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/fe517de7-d7cc-4657-a03e-79c7f29883fa)
 
