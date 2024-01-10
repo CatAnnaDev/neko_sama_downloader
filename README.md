@@ -27,7 +27,6 @@
 
 # Demo
 - full demo : https://youtu.be/8mfNNf3KhNY
-- Install : https://youtu.be/jF-j_ZjeEog
 
 ![](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/fe517de7-d7cc-4657-a03e-79c7f29883fa)
 
