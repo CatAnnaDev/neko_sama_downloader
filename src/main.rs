@@ -1,5 +1,6 @@
 #![feature(pattern)]
 #![feature(fs_try_exists)]
+#![feature(stmt_expr_attributes)]
 
 use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
 use clap::Parser;
@@ -171,6 +172,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     for entry in fs::read_dir(&path.extract_path)? {
         if let Ok(x) = entry {
             if let Some(file_name) = x.file_name().to_str() {
+
                 #[cfg(target_os = "windows")]
                 if file_name.ends_with(".exe") {
                     if file_name.contains("chromedriver") {
@@ -181,14 +183,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
 
-                #[cfg(target_family = "unix")]
+                #[cfg(any(
+                    target_os = "macos",
+                    target_os = "linux"
+                ))]
                 if file_name.ends_with("") {
                     if file_name.contains("chromedriver") {
                         chrome_check = true;
                     }
-                    if file_name.contains("ffmpeg") {
-                        ffmpeg_check = true;
-                    }
+
+                    ffmpeg_check = true;
                 }
 
                 if file_name.ends_with(".crx") {
@@ -222,8 +226,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     &new_args.debug,
                     &new_args.vlc_playlist,
                     &new_args.ignore_alert_missing_episode,
-                )
-                .await?;
+                ).await?;
             }
             info!(
                 "Global time: {}",

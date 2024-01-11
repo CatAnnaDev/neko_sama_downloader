@@ -113,7 +113,7 @@ pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>,
                             Some(url) => {
                                 fetch_url(
                                     url,
-                                    &name.trim().replace(":", ""),
+                                    &name.trim().replace(":", "").replace(" ", "_"),
                                     &tmp_dl,
                                     &client,
                                     debug,

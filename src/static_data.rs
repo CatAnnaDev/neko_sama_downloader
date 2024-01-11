@@ -36,4 +36,6 @@ pub(crate) static FFMPEG_PATH: &str = "https://evermeet.cx/ffmpeg/ffmpeg-6.1.zip
 
 #[cfg(target_os = "linux")]
 pub(crate) static FFMPEG_PATH: &str =
-    "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+    "static build: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz\n
+    arch linux, other: sudo pacman -S ffmpeg\n
+    ubuntu, debian, other: sudo apt install ffmpeg";

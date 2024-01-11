@@ -59,7 +59,7 @@ pub async fn start(
 
     info!("Scan Main Page");
 
-    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client).await?;
+    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client, &ignore_alert).await?;
 
     info!("total found: {}", good);
 
@@ -138,7 +138,7 @@ pub async fn start(
                                 .unwrap()
                                 .to_str()
                                 .unwrap()
-                                .replace(".m3u8", ".mp4"),
+                                .replace(".m3u8", ".mp4").replace(" ", "_"),
                         ));
 
                 let _ = &mut save.push((name.clone(), &save_path));
@@ -155,11 +155,13 @@ pub async fn start(
     for (output_path, name) in m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = ffmpeg.clone();
+        let debug = debug.clone();
         pool.execute(move || {
             tx.send(web::download_build_video(
                 &output_path.to_str().unwrap(),
                 name.to_str().unwrap(),
                 &ffmpeg,
+                &debug,
             ))
             .unwrap_or(())
         })
@@ -172,9 +174,7 @@ pub async fn start(
     }
 
     progress_bar.finish();
-    //if let Ok(_) = driver.close_window().await{}
-    info!("Clean tmp dir!");
-    utils_data::remove_dir_contents(tmp_dl);
+
 
     if good >= 2 && *vlc_playlist {
         info!("Build vlc playlist");
@@ -187,6 +187,10 @@ pub async fn start(
     let hours = (before.elapsed().as_secs() / 60) / 60;
 
     let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
+
+
+    info!("Clean tmp dir!");
+    utils_data::remove_dir_contents(tmp_dl);
 
     info!(
         "Done in: {} for {} episodes and {} error",
@@ -203,26 +207,31 @@ pub async fn scan_main_page(
     tmp_dl: &PathBuf,
     debug: &bool,
     client: &Client,
+    ignore_warn: &bool
 ) -> Result<(u16, u16), Box<dyn Error>> {
     fs::create_dir_all(tmp_dl)?;
     save_path.push_str(&utils_data::edit_for_windows_compatibility(
-        &drivers.title().await?.replace(" - Neko Sama", ""),
+        &drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_"),
     ));
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
 
-    if fs::try_exists(season_path.clone()).unwrap(){
-        warn!("Path already exist\n{}", season_path.display());
-        let mut s = String::new();
-        print!("Do you want delete this path press Y, or N to ignore and continue: ");
-        let _ = stdout().flush();
-        stdin().read_line(&mut s).expect("Did not enter a correct string");
-        if s.to_lowercase().trim() == "y"{
-            fs::remove_dir_all(season_path.clone())?;
-        }else {
-            info!("Okay path ignored")
-        };
+    if *ignore_warn{
+        if fs::try_exists(season_path.clone()).unwrap(){
+        
+            warn!("Path already exist\n{}", season_path.display());
+            let mut s = String::new();
+            print!("Do you want delete this path press Y, or N to ignore and continue: ");
+            let _ = stdout().flush();
+            stdin().read_line(&mut s).expect("Did not enter a correct string");
+            if s.to_lowercase().trim() == "y"{
+                fs::remove_dir_all(season_path.clone())?;
+            }else {
+                info!("Okay path ignored")
+            };
+        }
     }
-     fs::create_dir_all(season_path)?;
+
+    fs::create_dir_all(season_path)?;
     Ok(html_parser::recursive_find_url(&drivers, url_test, base_url, debug, &client, &tmp_dl).await?)
 }

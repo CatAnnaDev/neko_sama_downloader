@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::process::{Command, exit, Stdio};
+use std::process::{Command, exit};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use ctrlc::set_handler;
@@ -20,20 +20,12 @@ pub fn spawn_chrome(chrome: &PathBuf){
     }).expect("set_handler Error");
 
     println!("spawn chrome");
-    let child = Command::new(chrome)
-        .args([
-            "--ignore-certificate-errors",
-            "--disable-logging",
-            "--disable-logging-redirect",
-            "--port=6969",
-        ])
-        .stdout(Stdio::null())
-        .spawn();
+    let mut child = Command::new(chrome).arg("--port=6969").spawn().expect("Can't start chromedriver");
 
     thread::spawn(move || {
         while *running.lock().unwrap() {
             if let Ok(_) = rx.try_recv() {
-                child.unwrap().kill().unwrap();
+                child.kill().unwrap();
                 exit(0);
             }
         }

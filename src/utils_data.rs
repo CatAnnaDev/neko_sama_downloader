@@ -45,7 +45,7 @@ pub fn custom_sort_vlc(vec: &mut Vec<(PathBuf, &String)>) {
 
 pub fn extract_episode_number(s: &str) -> i32 {
     s.trim_end_matches(".mp4")
-        .split_whitespace()
+        .split("_")
         .filter_map(|word| word.parse::<i32>().ok())
         .last()
         .unwrap_or(0)
