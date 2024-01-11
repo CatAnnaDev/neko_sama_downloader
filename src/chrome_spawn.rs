@@ -19,7 +19,6 @@ pub fn spawn_chrome(chrome: &PathBuf){
         }
     }).expect("set_handler Error");
 
-    println!("spawn chrome");
     let mut child = Command::new(chrome).arg("--port=6969").spawn().expect("Can't start chromedriver");
 
     thread::spawn(move || {

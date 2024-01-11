@@ -152,6 +152,26 @@ pub async fn start(
 
     utils_data::custom_sort(&mut m3u8_path_folder);
 
+    #[cfg(target_os = "windows")]
+    if m3u8_path_folder.first().unwrap().1.to_str().unwrap().len() > 240{
+        let mut s = String::new();
+        warn!("Path too long do you want enable long path in windows? [Y/n]: ");
+        let _ = stdout().flush();
+        stdin().read_line(&mut s).expect("Did not enter a correct string");
+        if s.to_lowercase().trim() == "y"{
+            use winreg::enums::*;
+            use winreg::RegKey;
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem").join("LongPathsEnabled");
+            let (key, _) = hklm.create_subkey(&path)?;
+            key.set_value("LongPathsEnabled", &1u32)?;
+            info!("LongPathsEnabled, continue")
+        }else {
+            error!("Quitting app, path too long");
+            exit(130);
+        };
+    }
+
     for (output_path, name) in m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = ffmpeg.clone();
