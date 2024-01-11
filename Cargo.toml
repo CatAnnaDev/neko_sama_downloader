@@ -28,17 +28,18 @@ strip = true
 codegen-units = 1
 
 [dependencies]
-reqwest = { version = "*", features = ["blocking"] }
-tokio = { version = "*", features = ["full"] }
-futures = "*"
-thirtyfour = "*"
-indicatif = "*"
-quick-xml = { version = "*", features = [] }
-regex = "*"
-crossbeam = "*"
-serde_derive = { version = "*", features = [] }
-serde = "*"
-serde_json = "*"
-strsim = "*"
-clap = { version = "*", features = ["derive"] }
-signal-hook = { version = "0.3.17", features = ["default"] }
+indicatif = "0.17.7"
+reqwest = "0.11.23"
+clap = { version = "4.4.14", features = ["derive"] }
+crossbeam-channel = "0.5.11"
+serde_derive = "1.0.195"
+crossbeam = "0.8.4"
+regex = "1.10.2"
+quick-xml = "0.31.0"
+tokio = "1.35.1"
+thirtyfour = "0.32.0-rc.9"
+ctrlc = "3.4.2"
+strsim = "0.11.0"
+serde_json = "1.0.111"
+serde = "1.0.195"
+

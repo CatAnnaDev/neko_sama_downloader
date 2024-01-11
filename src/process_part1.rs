@@ -2,15 +2,16 @@ use std::error::Error;
 use std::fs;
 use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command, Stdio};
+use std::process::exit;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
-use thirtyfour::{ChromeCapabilities, WebDriver};
+use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
 use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
+use crate::chrome_spawn::spawn_chrome;
 
 pub async fn start(
     url_test: &str,
@@ -26,16 +27,7 @@ pub async fn start(
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
-    let mut child_process = Command::new(chrome)
-        .args([
-            "--ignore-certificate-errors",
-            "--disable-popup-blocking",
-            "--disable-logging",
-            "--disable-logging-redirect",
-            "--port=6969",
-        ])
-        .stdout(Stdio::null())
-        .spawn()?;
+    spawn_chrome(chrome);
 
     if *debug {
         debug!("spawn chrome process");
@@ -51,14 +43,13 @@ pub async fn start(
         debug!("add ublock origin");
     }
     let mut prefs = ChromeCapabilities::new();
-    prefs
-        .add_extension(ublock)
-        .expect("can't install ublock origin");
-
+    prefs.add_extension(ublock).expect("can't install ublock origin");
+    prefs.set_ignore_certificate_errors()?;
 
     if *debug {
         debug!("connect to chrome driver");
     }
+
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
     driver.minimize_window().await?;
     driver
@@ -84,13 +75,13 @@ pub async fn start(
         let _ = stdout().flush();
         stdin().read_line(&mut s).expect("Did not enter a correct string");
         if s.trim() == "n" {
-            exit(0);
+            exit(130);
         }
     }
 
     if good == 0 {
         error!("Nothing found or url down");
-        exit(0);
+        exit(130);
     }
 
     // kill chromedriver
@@ -105,7 +96,6 @@ pub async fn start(
     if *debug {
         debug!("chromedriver kill process");
     }
-    child_process.kill()?;
 
     if thread > good as usize {
         warn!("update thread count from {thread} to {good}");

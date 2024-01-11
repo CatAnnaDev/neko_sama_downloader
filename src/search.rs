@@ -66,7 +66,7 @@ pub(crate) async fn search_over_json(
     if find.len() == 0 {
         warn!("Noting found retry with another keyword");
         warn!("Or try with -l vostfr or -l vf (vf is used by default)");
-        exit(0);
+        exit(130);
     }
     Ok(find)
 }

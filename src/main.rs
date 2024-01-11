@@ -2,10 +2,7 @@
 #![feature(fs_try_exists)]
 
 use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use clap::Parser;
-use signal_hook::consts::*;
 
 mod cmd_line_parser;
 mod html_parser;
@@ -20,6 +17,7 @@ mod utils_check;
 mod utils_data;
 mod vlc_playlist_builder;
 mod web;
+mod chrome_spawn;
 
 enum Scan {
     Download,
@@ -29,21 +27,8 @@ enum Scan {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
-    let running = Arc::new(AtomicBool::new(false));
-
-    for sig in TERM_SIGNALS {
-        signal_hook::flag::register(*sig, Arc::clone(&running))?;
-    }
-
-    thread::spawn(move ||{
-        while !running.load(Ordering::Relaxed) {
-        }
-        warn!("Kill chromedriver");
-        utils_data::kill_process().expect("can't kill chromedriver");
-        exit(0);
-    });
-
     let mut new_args = cmd_line_parser::Args::parse();
+
     header!(r#"
   _   _      _                   _ _
  | \ | | ___| | _____         __| | |
@@ -167,7 +152,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 processing_url.append(&mut vec![url]);
             }
             if s.trim() == "n" {
-                exit(0);
+                exit(130);
             }
         }
         Scan::Download => {

@@ -1,7 +1,7 @@
 use reqwest::{Client, Response};
 use std::path::PathBuf;
 use std::process::Command;
-use tokio::time::Instant;
+use std::time::Instant;
 use crate::warn;
 
 pub fn download_build_video(path: &str, name: &str, ffmpeg: &PathBuf) -> i16 {
