@@ -11,27 +11,21 @@ use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
 use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
-use crate::chrome_spawn::spawn_chrome;
 
 pub async fn start(
     url_test: &str,
     exe_path: &Path,
     tmp_dl: &PathBuf,
-    chrome: &PathBuf,
     ublock: &PathBuf,
     ffmpeg: &PathBuf,
     mut thread: usize,
     debug: &bool,
     vlc_playlist: &bool,
     ignore_alert: &bool,
+    minimized: &bool,
+    langue: &String,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
-
-    spawn_chrome(chrome);
-
-    if *debug {
-        debug!("spawn chrome process");
-    }
 
     let before = Instant::now();
 
@@ -49,17 +43,17 @@ pub async fn start(
     if *debug {
         debug!("connect to chrome driver");
     }
-
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
-    driver.minimize_window().await?;
-    driver
-        .set_page_load_timeout(Duration::from_secs(20))
-        .await?;
+    if *minimized {
+        driver.minimize_window().await?;
+    }
+    driver.set_page_load_timeout(Duration::from_secs(20)).await?;
+
     driver.goto(url_test).await?;
 
     info!("Scan Main Page");
 
-    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client, &ignore_alert).await?;
+    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client, &ignore_alert, langue).await?;
 
     info!("total found: {}", good);
 
@@ -141,26 +135,6 @@ pub async fn start(
 
     utils_data::custom_sort(&mut m3u8_path_folder);
 
-    #[cfg(target_os = "windows")]
-    if m3u8_path_folder.first().unwrap().1.to_str().unwrap().len() > 240{
-        let mut s = String::new();
-        warn!("Path too long do you want enable long path in windows? [Y/n]: ");
-        let _ = stdout().flush();
-        stdin().read_line(&mut s).expect("Did not enter a correct string");
-        if s.to_lowercase().trim() == "y"{
-            use winreg::enums::*;
-            use winreg::RegKey;
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem").join("LongPathsEnabled");
-            let (key, _) = hklm.create_subkey(&path)?;
-            key.set_value("LongPathsEnabled", &1u32)?;
-            info!("LongPathsEnabled, continue")
-        }else {
-            error!("Quitting app, path too long");
-            exit(130);
-        };
-    }
-
     info!("Start Processing with {} threads", thread);
 
     let progress_bar = ProgressBar::new(good as u64);
@@ -195,7 +169,6 @@ pub async fn start(
 
     progress_bar.finish();
 
-
     if good >= 2 && *vlc_playlist {
         info!("Build vlc playlist");
         utils_data::custom_sort_vlc(&mut save_path_vlc);
@@ -207,7 +180,6 @@ pub async fn start(
     let hours = (before.elapsed().as_secs() / 60) / 60;
 
     let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
-
 
     info!("Clean tmp dir!");
     utils_data::remove_dir_contents(tmp_dl);
@@ -227,18 +199,19 @@ pub async fn scan_main_page(
     tmp_dl: &PathBuf,
     debug: &bool,
     client: &Client,
-    ignore_warn: &bool
+    ignore_warn: &bool,
+    langue: &String
 ) -> Result<(u16, u16), Box<dyn Error>> {
+
     fs::create_dir_all(tmp_dl)?;
-    save_path.push_str(&utils_data::edit_for_windows_compatibility(
-        &drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_"),
-    ));
+    let path= format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_")));
+    save_path.push_str(path.as_str());
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
-
+    warn!("season_path\n{}", season_path.display());
+    warn!("tmp_dl\n{}", tmp_dl.display());
     if *ignore_warn{
         if fs::try_exists(season_path.clone()).unwrap(){
-        
             warn!("Path already exist\n{}", season_path.display());
             let mut s = String::new();
             print!("Do you want delete this path press Y, or N to ignore and continue: ");

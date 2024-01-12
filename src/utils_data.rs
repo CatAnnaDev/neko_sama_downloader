@@ -1,10 +1,12 @@
 use std::error::Error;
 use std::fs;
+use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, exit, Stdio};
 use std::time::Instant;
 
 use regex::Regex;
+use crate::{error, info, warn};
 
 pub fn kill_process() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]
@@ -54,6 +56,28 @@ pub fn extract_episode_number(s: &str) -> i32 {
 pub fn edit_for_windows_compatibility(name: &str) -> String {
     let regex = Regex::new(r#"[\\/?%*:|"<>]+"#).unwrap();
     regex.replace_all(name, "").to_string()
+}
+#[cfg(target_os = "windows")]
+pub fn _path_length_windows(path: &str) -> Result<(), Box<dyn Error>>{
+    if path.len() > 240{
+        let mut s = String::new();
+        warn!("Path too long do you want enable long path in windows? [Y/n]: ");
+        let _ = stdout().flush();
+        stdin().read_line(&mut s).expect("Did not enter a correct string");
+        if s.to_lowercase().trim() == "y"{
+            use winreg::enums::*;
+            use winreg::RegKey;
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem").join("LongPathsEnabled");
+            let (key, _) = hklm.create_subkey(&path)?;
+            key.set_value("LongPathsEnabled", &1u32)?;
+            info!("LongPathsEnabled, continue")
+        }else {
+            error!("Quitting app, path too long");
+            exit(130);
+        };
+    }
+    Ok(())
 }
 
 pub fn remove_dir_contents<P: AsRef<Path>>(path: P) {

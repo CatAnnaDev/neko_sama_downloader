@@ -4,14 +4,14 @@
 
 use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
 use clap::Parser;
+use crate::chrome_spawn::spawn_chrome;
+use crate::search::ProcessingUrl;
 
 mod cmd_line_parser;
 mod html_parser;
 mod log_color;
 mod process_part1;
 mod search;
-use crate::search::ProcessingUrl;
-
 mod static_data;
 mod thread_pool;
 mod utils_check;
@@ -27,7 +27,7 @@ enum Scan {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
+    print!("\x1B[2J\x1B[1;1H");
     let mut new_args = cmd_line_parser::Args::parse();
 
     header!(r#"
@@ -52,19 +52,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     info!(
-        "Config:\n\
+    "Config:\n\
     Url or Search:\t{}\n\
     Language:\t{}\n\
     Threads:\t{}\n\
     Vlc playlist:\t{}\n\
     Ignore Alert:\t{}\n\
+    Minimized:\t{}\n\
     Debug:\t\t{}",
         new_args.url_or_search_word,
         new_args.language,
         new_args.thread,
         new_args.vlc_playlist,
+        new_args.ignore_alert_missing_episode,
+        new_args.minimized_chrome,
         new_args.debug,
-        new_args.ignore_alert_missing_episode
+
     );
 
     let path = utils_check::check()?;
@@ -128,33 +131,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 warn!("more than 50 seasons found")
             }
             let proc_len = processing_url.len();
-            let mut s = String::new();
 
             if new_args.url_or_search_word != " " {
                 print!("Ready to download ({proc_len}) seasons? 'Y' to download all, 'n' to cancel, or choose a season [1-{proc_len}]: ");
             } else {
-                print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ",new_args.language);
+                print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ", new_args.language);
             }
+
+            let mut s = String::new();
             let _ = stdout().flush();
-            stdin()
-                .read_line(&mut s)
-                .expect("Did not enter a correct string");
-
-            if let Ok(mut pick) = s.trim().parse::<usize>() {
-                if pick <= 0 {
-                    pick = 1;
-                }
-                if pick >= proc_len {
-                    pick = proc_len;
-                }
-
-                let url = processing_url[pick - 1].clone();
-                processing_url.clear();
-                processing_url.append(&mut vec![url]);
-            }
+            stdin().read_line(&mut s).expect("Did not enter a correct string");
             if s.trim() == "n" {
                 exit(130);
             }
+
+            if s.trim().to_lowercase() != "y" || s.trim() != "" {
+                if let Ok(mut parsed) = pick_season_list(s.trim(), processing_url.clone()) {
+                    processing_url.clear();
+                    processing_url.append(&mut parsed);
+                }
+            }
+
         }
         Scan::Download => {
             let x = ProcessingUrl {
@@ -213,21 +210,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
     match ffmpeg_check && chrome_check && ublock_check {
         true => {
             let global_time = Instant::now();
+            if new_args.debug {
+                debug!("spawn chrome process");
+            }
+            spawn_chrome(&path.chrome_path);
             for x in processing_url {
                 info!("Process: {}", x.url);
                 process_part1::start(
                     &x.url,
                     &path.exe_path.parent().unwrap(),
                     &path.tmp_dl,
-                    &path.chrome_path,
                     &path.u_block_path,
                     &path.ffmpeg_path,
                     thread,
                     &new_args.debug,
                     &new_args.vlc_playlist,
                     &new_args.ignore_alert_missing_episode,
+                    &new_args.minimized_chrome,
+                    &new_args.language
                 ).await?;
             }
+
             info!(
                 "Global time: {}",
                 utils_data::time_to_human_time(global_time)
@@ -262,6 +265,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let _ = utils_data::kill_process();
+    utils_data::kill_process()?;
     Ok(())
+}
+
+fn pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+    let numbers: Vec<usize> = input.split(|c: char| !c.is_digit(10)).filter_map(|s| s.parse().ok()).collect();
+    Ok(numbers.iter().filter_map(|&number| { processing_url.get(number - 1).map(|url| url.clone()) }).collect())
 }

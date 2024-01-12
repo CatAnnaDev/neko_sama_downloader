@@ -75,12 +75,9 @@ pub async fn get_all_link_base(
 pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>, base_url: &str, client: &Client, tmp_dl: &PathBuf,) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
-
     for fuse_iframe in all_l {
         driver.handle.goto(&format!("{base_url}{fuse_iframe}")).await?;
-
         let name = &utils_data::edit_for_windows_compatibility(&driver.title().await?.replace(" - Neko Sama", ""), );
-
         let url = driver.handle.find(By::Id("un_episode")).await?;
         match url.handle.clone().enter_frame(0).await{
             Ok(_) => {
@@ -133,7 +130,7 @@ pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>,
         }
         driver.handle.enter_parent_frame().await?;
     }
-    utils_data::kill_process()?;
+    // utils_data::kill_process()?;
     Ok((nb_found, nb_error))
 }
 
@@ -183,6 +180,5 @@ pub async fn fetch_url(
             error!("fetch_url: {:?}", e)
         }
     }
-
     Ok(())
 }

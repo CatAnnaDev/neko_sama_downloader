@@ -34,9 +34,18 @@ pub struct Args {
     #[arg(
     short = 'i',
     long = "ignore",
-    default_value_t = true,
+    default_value_t = false,
     help = "ignore confirmation to continue if 1 or more episodes is missing to complete the season [default: false]",
-    action=ArgAction::SetFalse
+    action=ArgAction::SetTrue
     )]
     pub ignore_alert_missing_episode: bool,
+
+    #[arg(
+    short = 'm',
+    long = "minimized",
+    default_value_t = false,
+    help = "start chrome minimized or not [default: false]",
+    action=ArgAction::SetTrue
+    )]
+    pub minimized_chrome: bool,
 }

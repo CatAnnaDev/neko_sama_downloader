@@ -12,8 +12,9 @@ pub fn spawn_chrome(chrome: &PathBuf){
     let running_clone = Arc::clone(&running);
 
     set_handler(move || {
-        let mut running = running_clone.lock().unwrap();
-        *running = false;
+        if let Ok(mut running) = running_clone.lock() {
+            *running = false;
+        }
         if let Ok(_) = tx.send(()){
 
         }

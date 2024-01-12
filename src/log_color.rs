@@ -13,7 +13,7 @@ macro_rules! warn {
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {
-        eprintln!("\x1B[32m[✅ ] {}\x1B[0m", format_args!($($arg)*))
+        eprintln!("\x1B[32m[✅] {}\x1B[0m", format_args!($($arg)*))
     };
 }
 
