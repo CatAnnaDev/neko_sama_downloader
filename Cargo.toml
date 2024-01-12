@@ -1,6 +1,6 @@
 [package]
 name = "anime_dl"
-version = "0.1.0"
+version = "0.6.0"
 edition = "2021"
 homepage = "https://github.com/PsykoDev/neko_sama_downloader"
 repository = "https://github.com/PsykoDev/neko_sama_downloader"
