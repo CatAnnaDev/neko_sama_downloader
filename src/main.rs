@@ -2,8 +2,9 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, fs, process::exit, time::Instant, io::{stdin, stdout, Write}, thread};
+use std::{error::Error, fs, time::Instant, io::{stdin, stdout, Write}, thread};
 use clap::Parser;
+use requestty::{OnEsc, prompt_one, Question};
 use crate::chrome_spawn::spawn_chrome;
 use crate::search::ProcessingUrl;
 
@@ -27,7 +28,7 @@ enum Scan {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    print!("\x1B[2J\x1B[1;1H");
+    // print!("\x1B[2J\x1B[1;1H");
     let mut new_args = cmd_line_parser::Args::parse();
 
     header!(r#"
@@ -98,69 +99,33 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await?;
 
-            processing_url.extend(find.clone());
+            let multi_select = Question::multi_select("Season")
+                .message("What seasons do you want?")
+                .choices(find.iter().map(|s| format!("{} ({})\n[{}]", s.name, s.ep, s.genre)).collect::<Vec<String>>())
+                .on_esc(OnEsc::Terminate)
+                .page_size(20)
+                .should_loop(false)
+                .build();
 
-            let mut nb_episodes = 0;
-            if find.len() <= 50 {
-                for (id, processing_url) in find.iter().enumerate() {
-                    dl_ready!(
-                        "({}): {} ({})\n\t[{}]:",
-                        id + 1,
-                        processing_url.name,
-                        processing_url.ep,
-                        processing_url.genre
-                    );
-                    println!("{}\n", processing_url.url);
-                    nb_episodes += processing_url
-                        .ep
-                        .split_whitespace()
-                        .nth(0)
-                        .unwrap()
-                        .parse::<i32>()
-                        .unwrap_or(1);
-                }
-            } else {
-                for x in find {
-                    nb_episodes +=
-                        x.ep.split_whitespace()
-                            .nth(0)
-                            .unwrap()
-                            .parse::<i32>()
-                            .unwrap_or(1);
-                }
-                warn!("more than 50 seasons found")
-            }
-            let proc_len = processing_url.len();
+            let answer = prompt_one(multi_select)?;
+            let matching_processing_urls: Vec<_> =
+                answer
+                    .try_into_list_items()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|number|  find.get(number.index).cloned() )
+                    .collect();
 
-            if new_args.url_or_search_word != " " {
-                print!("Ready to download ({proc_len}) seasons? 'Y' to download all, 'n' to cancel, or choose a season [1-{proc_len}]: ");
-            } else {
-                print!("Ready to download NekoSama ({}) entirely ? ({proc_len}) seasons ? so {nb_episodes} Eps  [Y/n]: ", new_args.language);
-            }
-
-            let mut s = String::new();
-            let _ = stdout().flush();
-            stdin().read_line(&mut s).expect("Did not enter a correct string");
-            if s.trim() == "n" {
-                exit(130);
-            }
-
-            if s.trim().to_lowercase() != "y" || s.trim() != "" {
-                if let Ok(mut parsed) = pick_season_list(s.trim(), processing_url.clone()) {
-                    processing_url.clear();
-                    processing_url.append(&mut parsed);
-                }
-            }
+            processing_url.extend(matching_processing_urls);
 
         }
         Scan::Download => {
-            let x = ProcessingUrl {
+            processing_url.extend(vec![ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
                 url: new_args.url_or_search_word,
                 genre: "".to_string(),
-            };
-            processing_url.extend(vec![x]);
+            }]);
         }
     }
 
@@ -269,7 +234,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+fn _pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let numbers: Vec<usize> = input.split(|c: char| !c.is_digit(10)).filter_map(|s| s.parse().ok()).collect();
     Ok(numbers.iter().filter_map(|&number| { processing_url.get(number - 1).map(|url| url.clone()) }).collect())
 }

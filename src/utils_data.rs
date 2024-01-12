@@ -6,7 +6,16 @@ use std::process::{Command, exit, Stdio};
 use std::time::Instant;
 
 use regex::Regex;
+use requestty::Answer;
 use crate::{error, info, warn};
+
+pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>>{
+    let question = requestty::Question::confirm("anonymous")
+        .message(question)
+        .build();
+
+    Ok(requestty::prompt_one(question)?)
+}
 
 pub fn kill_process() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]

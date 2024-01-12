@@ -49,10 +49,7 @@ pub(crate) async fn search_over_json(
         let max_length = cleaned_name.len().max(cleaned_title.len()) as f64;
         let levenshtein_similarity = 1.0 - levenshtein_distance / max_length;
 
-        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8
-            || levenshtein_similarity > 0.8
-            || cleaned_title.contains(&cleaned_name)
-        {
+        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8 || levenshtein_similarity > 0.8 || cleaned_title.contains(&cleaned_name) {
             let x = ProcessingUrl {
                 name: x.title,
                 ep: x.nb_eps,
