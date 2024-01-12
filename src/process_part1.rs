@@ -208,8 +208,6 @@ pub async fn scan_main_page(
     save_path.push_str(path.as_str());
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
-    warn!("season_path\n{}", season_path.display());
-    warn!("tmp_dl\n{}", tmp_dl.display());
     if *ignore_warn{
         if fs::try_exists(season_path.clone()).unwrap(){
             warn!("Path already exist\n{}", season_path.display());
