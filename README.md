@@ -1,7 +1,6 @@
 [![All release](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml/badge.svg)](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml)
 # Usage
-![Screenshot 2024-01-10 at 01 05 46](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/f4e6eaf9-4e52-4121-8343-7f251466e5e2)
-
+![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/a8159d4f-2bee-4f62-a42f-e00fc5ec2bf3)
 
 ```txt
 ./anime_dl -s "anime name" -l <vf | vostfr> ( optional default=vf ) -t <thread number> ( optional default=1 )
@@ -15,6 +14,7 @@
   - Can download only 1 episode or entire season ( based on url given )
   - Can search all seasons by same name and download all found seasons
   - ublock origin is added by default
+  - Can search then select what seasoans you want, All or by unique id or multiple id
 
 # Note
 - (Multi thread) 1 thread can download between 3 and 5 mo/s ( limited by website ) so 20 thread is good for 1gb/s fiber
