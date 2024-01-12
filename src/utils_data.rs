@@ -3,7 +3,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
-
 use regex::Regex;
 use requestty::Answer;
 
@@ -65,6 +64,8 @@ pub fn edit_for_windows_compatibility(name: &str) -> String {
 }
 #[cfg(target_os = "windows")]
 pub fn _path_length_windows(path: &str) -> Result<(), Box<dyn Error>>{
+    use crate::{error, info, warn};
+    use std::{process::exit, io::{stdin, stdout, Write}};
     if path.len() > 240{
         let mut s = String::new();
         warn!("Path too long do you want enable long path in windows? [Y/n]: ");

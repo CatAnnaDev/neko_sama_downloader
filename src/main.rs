@@ -2,7 +2,7 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, fs, time::Instant, io::Write, thread};
+use std::{error::Error, fs, time::Instant, thread};
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 use crate::chrome_spawn::spawn_chrome;
