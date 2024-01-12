@@ -7,8 +7,10 @@ use quick_xml::Writer;
 
 pub fn new(track: Vec<(PathBuf, &String)>) -> Result<(), Box<dyn Error>> {
     let save_path = track.first().unwrap().0.parent().unwrap();
-    let save_name = track.first().unwrap().1;
-    let file = File::create(format!("{}/{}.xspf", save_path.display(), save_name))?;
+    let binding = track.first().unwrap().1.split("/").collect::<Vec<_>>();
+    let save_name = &binding.last().unwrap();
+    let full_path = format!("{}/{}.xspf", save_path.display(), save_name);
+    let file = File::create(full_path)?;
     let mut writer = Writer::new(file);
 
     writer.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))?;
@@ -72,6 +74,7 @@ fn write_vlc_item(writer: &mut Writer<File>, tid: usize) -> Result<(), Box<dyn E
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 fn path_to_vlcpath(path: &str) -> String {
+    println!("{}", path);
     format!("file://{}", path.replace(" ", "%20"))
 }
 

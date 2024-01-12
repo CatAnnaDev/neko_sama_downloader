@@ -1,19 +1,16 @@
 use std::error::Error;
 use std::fs;
-use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, exit, Stdio};
+use std::process::{Command, Stdio};
 use std::time::Instant;
 
 use regex::Regex;
 use requestty::Answer;
-use crate::{error, info, warn};
 
 pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>>{
     let question = requestty::Question::confirm("anonymous")
         .message(question)
         .build();
-
     Ok(requestty::prompt_one(question)?)
 }
 

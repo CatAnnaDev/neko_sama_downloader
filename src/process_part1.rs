@@ -111,11 +111,8 @@ pub async fn start(
 
             if file_path.is_file() {
                 let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
-
                 let name =
-                    exe_path
-                        .join(&save_path)
-                        .join(utils_data::edit_for_windows_compatibility(
+                    exe_path.join(&save_path).join(utils_data::edit_for_windows_compatibility(
                             &file_path
                                 .file_name()
                                 .unwrap()
@@ -123,9 +120,7 @@ pub async fn start(
                                 .unwrap()
                                 .replace(".m3u8", ".mp4").replace(" ", "_"),
                         ));
-
-                let _ = &mut save.push((name.clone(), &save_path));
-
+                save.push((name.clone(), &save_path));
                 Some((output_path, name))
             } else {
                 None
