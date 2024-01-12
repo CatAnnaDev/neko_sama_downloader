@@ -102,17 +102,6 @@ pub async fn start(
         thread = good as usize;
     }
 
-    info!("Start Processing with {} threads", thread);
-
-    let progress_bar = ProgressBar::new(good as u64);
-    progress_bar.enable_steady_tick(Duration::from_secs(1));
-
-    progress_bar.set_style(
-        ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta})")?
-            .progress_chars("$>-"),
-    );
-
     let (tx, rx) = mpsc::channel();
 
     let mut pool = ThreadPool::new(thread, good as usize);
@@ -171,6 +160,17 @@ pub async fn start(
             exit(130);
         };
     }
+
+    info!("Start Processing with {} threads", thread);
+
+    let progress_bar = ProgressBar::new(good as u64);
+    progress_bar.enable_steady_tick(Duration::from_secs(1));
+
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta})")?
+            .progress_chars("$>-"),
+    );
 
     for (output_path, name) in m3u8_path_folder {
         let tx = tx.clone();

@@ -3,6 +3,8 @@ use serde_derive::Deserialize;
 use serde_derive::Serialize;
 use std::error::Error;
 use std::process::exit;
+use std::time::Duration;
+use tokio::time;
 
 use crate::{debug, warn, web};
 
@@ -66,6 +68,7 @@ pub(crate) async fn search_over_json(
     if find.len() == 0 {
         warn!("Noting found retry with another keyword");
         warn!("Or try with -l vostfr or -l vf (vf is used by default)");
+        time::sleep(Duration::from_secs(20)).await;
         exit(130);
     }
     Ok(find)
