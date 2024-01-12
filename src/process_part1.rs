@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fs;
-use std::io::{stdin, stdout, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::mpsc;
@@ -11,6 +10,8 @@ use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
 use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
+use crate::cmd_line_parser::Args;
+use crate::utils_data::ask_something;
 
 pub async fn start(
     url_test: &str,
@@ -19,11 +20,7 @@ pub async fn start(
     ublock: &PathBuf,
     ffmpeg: &PathBuf,
     mut thread: usize,
-    debug: &bool,
-    vlc_playlist: &bool,
-    ignore_alert: &bool,
-    minimized: &bool,
-    langue: &String,
+    args: &Args
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
@@ -33,18 +30,18 @@ pub async fn start(
 
     let base_url = "https://neko-sama.fr";
 
-    if *debug {
+    if args.debug {
         debug!("add ublock origin");
     }
     let mut prefs = ChromeCapabilities::new();
     prefs.add_extension(ublock).expect("can't install ublock origin");
     prefs.set_ignore_certificate_errors()?;
 
-    if *debug {
+    if args.debug {
         debug!("connect to chrome driver");
     }
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
-    if *minimized {
+    if args.minimized_chrome {
         driver.minimize_window().await?;
     }
     driver.set_page_load_timeout(Duration::from_secs(20)).await?;
@@ -53,7 +50,7 @@ pub async fn start(
 
     info!("Scan Main Page");
 
-    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, debug, &client, &ignore_alert, langue).await?;
+    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, &args.debug, &client, &args.ignore_alert_missing_episode, &args.language).await?;
 
     info!("total found: {}", good);
 
@@ -62,14 +59,13 @@ pub async fn start(
         return Ok(());
     }
 
-    if error > 0 && *ignore_alert {
-        let mut s = String::new();
-        print!("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ");
-
-        let _ = stdout().flush();
-        stdin().read_line(&mut s).expect("Did not enter a correct string");
-        if s.trim() == "n" {
-            exit(130);
+    if error > 0 && args.ignore_alert_missing_episode {
+        if let Ok(e) = ask_something("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : "){
+            if e.as_bool().unwrap(){
+                info!("Okay continue")
+            }else {
+                exit(130);
+            }
         }
     }
 
@@ -79,15 +75,15 @@ pub async fn start(
     }
 
     // kill chromedriver
-    if *debug {
+    if args.debug {
         debug!("chromedriver close_window");
     }
     if let Ok(_) = driver.close_window().await{}
-    if *debug {
+    if args.debug {
         debug!("chromedriver quit");
     }
     if let Ok(_) = driver.quit().await{}
-    if *debug {
+    if args.debug {
         debug!("chromedriver kill process");
     }
 
@@ -144,7 +140,7 @@ pub async fn start(
     for (output_path, name) in m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = ffmpeg.clone();
-        let debug = debug.clone();
+        let debug = args.debug.clone();
         pool.execute(move || {
             tx.send(web::download_build_video(
                 &output_path.to_str().unwrap(),
@@ -164,7 +160,7 @@ pub async fn start(
 
     progress_bar.finish();
 
-    if good >= 2 && *vlc_playlist {
+    if good >= 2 && args.vlc_playlist {
         info!("Build vlc playlist");
         utils_data::custom_sort_vlc(&mut save_path_vlc);
         vlc_playlist_builder::new(save_path_vlc)?;
@@ -206,15 +202,14 @@ pub async fn scan_main_page(
     if *ignore_warn{
         if fs::try_exists(season_path.clone()).unwrap(){
             warn!("Path already exist\n{}", season_path.display());
-            let mut s = String::new();
-            print!("Do you want delete this path press Y, or N to ignore and continue: ");
-            let _ = stdout().flush();
-            stdin().read_line(&mut s).expect("Did not enter a correct string");
-            if s.to_lowercase().trim() == "y"{
-                fs::remove_dir_all(season_path.clone())?;
-            }else {
-                info!("Okay path ignored")
-            };
+            if let Ok(e) = ask_something("Do you want delete this path or ignore and continue:"){
+                if e.as_bool().unwrap(){
+                    println!("{}", season_path.display());
+                    fs::remove_dir_all(season_path.clone())?;
+                }else {
+                    info!("Okay path ignored")
+                }
+            }
         }
     }
 

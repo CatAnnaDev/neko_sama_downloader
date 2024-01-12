@@ -2,7 +2,7 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, fs, time::Instant, io::{stdin, stdout, Write}, thread};
+use std::{error::Error, fs, time::Instant, io::Write, thread};
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 use crate::chrome_spawn::spawn_chrome;
@@ -40,16 +40,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                           by PsykoDev
 "#);
 
-    if new_args.url_or_search_word.is_empty(){
-        let mut s = String::new();
-        warn!("prefers use ./anime_dl -h");
-        print!("Enter url to direct download or keyword to search: ");
-        let _ = stdout().flush();
-        stdin()
-            .read_line(&mut s)
-            .expect("Did not enter a correct string");
-
-        new_args.url_or_search_word = s.trim().to_string();
+    if new_args.url_or_search_word.is_empty() {
+        warn!("prefers use ./anime_dl -h\n");
+        let questions = Question::input("keyword")
+            .message("Enter url to direct download or keyword to search: ")
+            .build();
+        let reply = prompt_one(questions)?;
+        new_args.url_or_search_word = reply.as_string().unwrap().trim().to_string();
     }
 
     info!(
@@ -123,7 +120,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             processing_url.extend(vec![ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
-                url: new_args.url_or_search_word,
+                url: new_args.url_or_search_word.clone(),
                 genre: "".to_string(),
             }]);
         }
@@ -188,11 +185,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     &path.u_block_path,
                     &path.ffmpeg_path,
                     thread,
-                    &new_args.debug,
-                    &new_args.vlc_playlist,
-                    &new_args.ignore_alert_missing_episode,
-                    &new_args.minimized_chrome,
-                    &new_args.language
+                    &new_args
                 ).await?;
             }
 
