@@ -29,5 +29,4 @@
 # Demo
 - full demo : https://youtu.be/8mfNNf3KhNY
 
-![](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/fe517de7-d7cc-4657-a03e-79c7f29883fa)
-
+![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/21c40853-f1fe-4c5c-9a25-9dab00e2f31d)
