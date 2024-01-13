@@ -202,7 +202,7 @@ pub async fn scan_main_page(
     if *ignore_warn{
         if fs::try_exists(season_path.clone()).unwrap(){
             warn!("Path already exist\n{}", season_path.display());
-            if let Ok(e) = ask_something("Do you want delete this path or ignore and continue:"){
+            if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):"){
                 if e.as_bool().unwrap(){
                     println!("{}", season_path.display());
                     fs::remove_dir_all(season_path.clone())?;

@@ -5,51 +5,38 @@ use std::process::{Command, Stdio};
 use crate::{warn, debug};
 
 pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &bool) -> i16 {
-    
-    
+
     #[cfg(any(target_os = "macos",target_os = "linux"))]
     let _ffmpeg = "ffmpeg";
 
     let time = Instant::now();
     let mut process = Command::new(_ffmpeg);
-
+        let args = [
+            "-protocol_whitelist",
+            "file,http,https,tcp,tls,crypto",
+            "-i",
+            path,
+            "-bsf:a",
+            "aac_adtstoasc",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "copy",
+            &name,
+        ];
         if *debug{
             debug!("save path: {} output name: {}", path, name);
-            process.args([
-                "-protocol_whitelist",
-                "file,http,https,tcp,tls,crypto",
-                "-i",
-                path,
-                "-bsf:a",
-                "aac_adtstoasc",
-                "-c:v",
-                "copy",
-                "-c:a",
-                "copy",
-                &name,
-            ]).stdout(Stdio::piped()).spawn().expect("Can't start ffmpeg");
+            process.args(args).stdout(Stdio::piped()).spawn().expect("Can't start ffmpeg");
         }else {
-            process.args([
-                "-protocol_whitelist",
-                "file,http,https,tcp,tls,crypto",
-                "-i",
-                path,
-                "-bsf:a",
-                "aac_adtstoasc",
-                "-c:v",
-                "copy",
-                "-c:a",
-                "copy",
-                &name,
-            ]).output().expect("Can't start ffmpeg");
+            process.args(args).output().expect("Can't start ffmpeg");
         }
-
 
     let end = time.elapsed().as_secs();
 
     if end < 1{
         warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
     }
+
     1
 }
 

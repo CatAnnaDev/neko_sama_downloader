@@ -3,9 +3,10 @@
 #![feature(stmt_expr_attributes)]
 
 use std::{error::Error, fs, time::Instant, thread};
+use std::time::Duration;
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
-use crate::chrome_spawn::spawn_chrome;
+use crate::chrome_spawn::{kill_chrome, spawn_chrome};
 use crate::search::ProcessingUrl;
 
 mod cmd_line_parser;
@@ -28,7 +29,6 @@ enum Scan {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // print!("\x1B[2J\x1B[1;1H");
     let mut new_args = cmd_line_parser::Args::parse();
 
     header!(r#"
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 "#);
 
     if new_args.url_or_search_word.is_empty() {
-        warn!("prefers use ./anime_dl -h\n");
+        warn!("prefers use ./anime_dl -h");
         let questions = Question::input("keyword")
             .message("Enter url to direct download or keyword to search: ")
             .build();
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Language:\t{}\n\
     Threads:\t{}\n\
     Vlc playlist:\t{}\n\
-    Ignore Alert:\t{}\n\
+    Show Alert:\t{}\n\
     Minimized:\t{}\n\
     Debug:\t\t{}",
         new_args.url_or_search_word,
@@ -65,7 +65,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         new_args.ignore_alert_missing_episode,
         new_args.minimized_chrome,
         new_args.debug,
-
     );
 
     let path = utils_check::check()?;
@@ -75,10 +74,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut ublock_check = false;
 
     let mut thread = new_args.thread as usize;
+
     let max_thread = thread::available_parallelism()?.get() * 4;
     if thread > max_thread {
         warn!("Max thread for your cpu is between 1 and {}", max_thread);
         thread = max_thread;
+        warn!("Update thread for {} continue", thread);
     }
 
     let mut processing_url = vec![];
@@ -96,6 +97,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
             )
             .await?;
 
+            let mut ep = 0;
+            let mut film = 0;
+            let _: Vec<_> = find.iter().map(|s| {
+                if s.ep.starts_with("Film") { film += 1;
+                } else { ep += s.ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);};
+            }).collect();
+
+            info!("Seasons found: {} Episode found: {} ({} ~Go Total) Films found {} ({} ~Go Total)", find.len(), ep, ep * 250 / 1024, film, film * 1300 / 1024);
             let multi_select = Question::multi_select("Season")
                 .message("What seasons do you want?")
                 .choices(find.iter().map(|s| format!("{} ({})\n[{}]", s.name, s.ep, s.genre)).collect::<Vec<String>>())
@@ -116,6 +125,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             processing_url.extend(matching_processing_urls);
 
         }
+
         Scan::Download => {
             processing_url.extend(vec![ProcessingUrl {
                 name: "".to_string(),
@@ -175,8 +185,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if new_args.debug {
                 debug!("spawn chrome process");
             }
-            spawn_chrome(&path.chrome_path);
-            for x in processing_url {
+            let child = spawn_chrome(&path.chrome_path)?;
+            if new_args.debug {
+                debug!("wait 1sec chrome process spawn");
+            }
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            for (index, x) in processing_url.iter().enumerate() {
+                header!("Step {} / {}",index+1, processing_url.len());
                 info!("Process: {}", x.url);
                 process_part1::start(
                     &x.url,
@@ -189,10 +205,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 ).await?;
             }
 
-            info!(
-                "Global time: {}",
-                utils_data::time_to_human_time(global_time)
-            );
+            kill_chrome(child)?;
+            info!("Global time: {}",utils_data::time_to_human_time(global_time));
         }
         false => {
             if !ffmpeg_check && chrome_check {

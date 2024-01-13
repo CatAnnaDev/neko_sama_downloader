@@ -60,7 +60,6 @@ pub async fn download(url: &str, destination: &PathBuf) -> Result<(), Box<dyn Er
     info!("Download: {url}");
     let response = Client::new().get(url).send().await?;
     let archive_bytes = response.bytes().await?.to_vec();
-
     let mut archive_file = File::create(destination)?;
     archive_file.write_all(&archive_bytes)?;
     Ok(())
