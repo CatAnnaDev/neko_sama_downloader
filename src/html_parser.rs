@@ -19,6 +19,7 @@ pub async fn recursive_find_url(
 
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
+        all_l.push(_url_test.replace(base_url, ""));
         let video_url = get_video_url(&driver, debug, all_l, base_url, client, tmp_dl).await?;
         return Ok(video_url);
     }
@@ -50,6 +51,12 @@ pub async fn recursive_find_url(
     Ok(video_url)
 }
 
+pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
+    let class = driver.find(By::XPath(r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#)).await.expect("Can't get real name direct url");
+    let path = class.inner_html().await.expect("Can't get real name direct innerhtml");
+    path
+}
+
 pub async fn get_all_link_base(
     driver: &WebDriver,
     debug: &bool,
@@ -76,8 +83,11 @@ pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>,
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
     for fuse_iframe in all_l {
-        driver.handle.goto(&format!("{base_url}{fuse_iframe}")).await?;
-        let name = &utils_data::edit_for_windows_compatibility(&driver.title().await?.replace(" - Neko Sama", ""), );
+        let url = format!("{base_url}{fuse_iframe}");
+        driver.handle.goto(&url).await?;
+
+        let name = utils_data::edit_for_windows_compatibility(&driver.title().await?.replace(" - Neko Sama", ""), );
+
         let url = driver.handle.find(By::Id("un_episode")).await?;
         match url.handle.clone().enter_frame(0).await{
             Ok(_) => {

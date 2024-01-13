@@ -11,6 +11,7 @@ use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
 use crate::cmd_line_parser::Args;
+use crate::html_parser::get_base_name_direct_url;
 use crate::utils_data::ask_something;
 
 pub async fn start(
@@ -195,8 +196,13 @@ pub async fn scan_main_page(
 ) -> Result<(u16, u16), Box<dyn Error>> {
 
     fs::create_dir_all(tmp_dl)?;
-    let path= format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_")));
-    save_path.push_str(path.as_str());
+    let mut _path = String::new();
+    if !url_test.contains("/episode/") {
+        _path = format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_")));
+    }else {
+        _path = format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&get_base_name_direct_url(&drivers).await.replace(" - Neko Sama", "").replace(" ", "_")));
+    }
+    save_path.push_str(_path.as_str());
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
     if *ignore_warn{

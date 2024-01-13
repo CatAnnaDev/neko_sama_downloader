@@ -26,7 +26,7 @@ pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &b
         ];
         if *debug{
             debug!("save path: {} output name: {}", path, name);
-            process.args(args).stdout(Stdio::piped()).spawn().expect("Can't start ffmpeg");
+            process.args(args).stdout(Stdio::piped()).spawn().expect("Can't start ffmpeg").wait().expect("Error wait ffmpeg");
         }else {
             process.args(args).output().expect("Can't start ffmpeg");
         }
