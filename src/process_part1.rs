@@ -4,14 +4,15 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
+
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
-use crate::thread_pool::ThreadPool;
 use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
 use crate::cmd_line_parser::Args;
 use crate::html_parser::get_base_name_direct_url;
+use crate::thread_pool::ThreadPool;
 use crate::utils_data::ask_something;
 
 pub async fn start(
@@ -21,7 +22,7 @@ pub async fn start(
     ublock: &PathBuf,
     ffmpeg: &PathBuf,
     mut thread: usize,
-    args: &Args
+    args: &Args,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
@@ -35,7 +36,9 @@ pub async fn start(
         debug!("add ublock origin");
     }
     let mut prefs = ChromeCapabilities::new();
-    prefs.add_extension(ublock).expect("can't install ublock origin");
+    prefs
+        .add_extension(ublock)
+        .expect("can't install ublock origin");
     prefs.set_ignore_certificate_errors()?;
 
     if args.debug {
@@ -45,13 +48,26 @@ pub async fn start(
     if args.minimized_chrome {
         driver.minimize_window().await?;
     }
-    driver.set_page_load_timeout(Duration::from_secs(20)).await?;
+    driver
+        .set_page_load_timeout(Duration::from_secs(20))
+        .await?;
 
     driver.goto(url_test).await?;
 
     info!("Scan Main Page");
 
-    let (good, error) = scan_main_page(&mut save_path, &driver, url_test, base_url, tmp_dl, &args.debug, &client, &args.ignore_alert_missing_episode, &args.language).await?;
+    let (good, error) = scan_main_page(
+        &mut save_path,
+        &driver,
+        url_test,
+        base_url,
+        tmp_dl,
+        &args.debug,
+        &client,
+        &args.ignore_alert_missing_episode,
+        &args.language,
+    )
+        .await?;
 
     info!("total found: {}", good);
 
@@ -61,10 +77,12 @@ pub async fn start(
     }
 
     if error > 0 && args.ignore_alert_missing_episode {
-        if let Ok(e) = ask_something("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : "){
-            if e.as_bool().unwrap(){
+        if let Ok(e) =
+            ask_something("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ")
+        {
+            if e.as_bool().unwrap() {
                 info!("Okay continue")
-            }else {
+            } else {
                 exit(130);
             }
         }
@@ -79,11 +97,11 @@ pub async fn start(
     if args.debug {
         debug!("chromedriver close_window");
     }
-    if let Ok(_) = driver.close_window().await{}
+    if let Ok(_) = driver.close_window().await {}
     if args.debug {
         debug!("chromedriver quit");
     }
-    if let Ok(_) = driver.quit().await{}
+    if let Ok(_) = driver.quit().await {}
     if args.debug {
         debug!("chromedriver kill process");
     }
@@ -109,13 +127,16 @@ pub async fn start(
             if file_path.is_file() {
                 let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
                 let name =
-                    exe_path.join(&save_path).join(utils_data::edit_for_windows_compatibility(
+                    exe_path
+                        .join(&save_path)
+                        .join(utils_data::edit_for_windows_compatibility(
                             &file_path
                                 .file_name()
                                 .unwrap()
                                 .to_str()
                                 .unwrap()
-                                .replace(".m3u8", ".mp4").replace(" ", "_"),
+                                .replace(".m3u8", ".mp4")
+                                .replace(" ", "_"),
                         ));
                 save.push((name.clone(), &save_path));
                 Some((output_path, name))
@@ -149,7 +170,7 @@ pub async fn start(
                 &ffmpeg,
                 &debug,
             ))
-            .unwrap_or(())
+                .unwrap_or(())
         })
     }
 
@@ -192,27 +213,45 @@ pub async fn scan_main_page(
     debug: &bool,
     client: &Client,
     ignore_warn: &bool,
-    langue: &String
+    langue: &String,
 ) -> Result<(u16, u16), Box<dyn Error>> {
-
     fs::create_dir_all(tmp_dl)?;
     let mut _path = String::new();
     if !url_test.contains("/episode/") {
-        _path = format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_")));
-    }else {
-        _path = format!("Anime_Download/{}/{}", langue.to_uppercase(), &utils_data::edit_for_windows_compatibility(&get_base_name_direct_url(&drivers).await.replace(" - Neko Sama", "").replace(" ", "_")));
+        _path = format!(
+            "Anime_Download/{}/{}",
+            langue.to_uppercase(),
+            &utils_data::edit_for_windows_compatibility(
+                &drivers
+                    .title()
+                    .await?
+                    .replace(" - Neko Sama", "")
+                    .replace(" ", "_")
+            )
+        );
+    } else {
+        _path = format!(
+            "Anime_Download/{}/{}",
+            langue.to_uppercase(),
+            &utils_data::edit_for_windows_compatibility(
+                &get_base_name_direct_url(&drivers)
+                    .await
+                    .replace(" - Neko Sama", "")
+                    .replace(" ", "_")
+            )
+        );
     }
     save_path.push_str(_path.as_str());
 
     let season_path = tmp_dl.parent().unwrap().join(save_path);
-    if *ignore_warn{
-        if fs::try_exists(season_path.clone()).unwrap(){
+    if *ignore_warn {
+        if fs::try_exists(season_path.clone()).unwrap() {
             warn!("Path already exist\n{}", season_path.display());
-            if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):"){
-                if e.as_bool().unwrap(){
+            if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
+                if e.as_bool().unwrap() {
                     println!("{}", season_path.display());
                     fs::remove_dir_all(season_path.clone())?;
-                }else {
+                } else {
                     info!("Okay path ignored")
                 }
             }
@@ -220,5 +259,8 @@ pub async fn scan_main_page(
     }
 
     fs::create_dir_all(season_path)?;
-    Ok(html_parser::recursive_find_url(&drivers, url_test, base_url, debug, &client, &tmp_dl).await?)
+    Ok(
+        html_parser::recursive_find_url(&drivers, url_test, base_url, debug, &client, &tmp_dl)
+            .await?,
+    )
 }

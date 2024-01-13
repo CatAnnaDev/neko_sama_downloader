@@ -3,10 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
+
 use regex::Regex;
 use requestty::Answer;
 
-pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>>{
+pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     let question = requestty::Question::confirm("anonymous")
         .message(question)
         .build();
@@ -15,18 +16,19 @@ pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>>{
 
 pub fn kill_process() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]
-    let _ = Command::new("taskkill")
+        let _ = Command::new("taskkill")
         .args(["/t", "/f", "/im", "chromedriver.exe"])
         .stdout(Stdio::null())
         .spawn()?;
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let _ = Command::new("killall")
+        let _ = Command::new("killall")
         .arg("\"chromedriver\"")
         .stdout(Stdio::null())
         .spawn()?;
     Ok(())
 }
+
 pub fn time_to_human_time(time: Instant) -> String {
     let seconds = time.elapsed().as_secs() % 60;
     let minutes = (time.elapsed().as_secs() / 60) % 60;
@@ -62,24 +64,31 @@ pub fn edit_for_windows_compatibility(name: &str) -> String {
     let regex = Regex::new(r#"[\\/?%*:|"<>]+"#).unwrap();
     regex.replace_all(name, "").to_string()
 }
+
 #[cfg(target_os = "windows")]
-pub fn _path_length_windows(path: &str) -> Result<(), Box<dyn Error>>{
+pub fn _path_length_windows(path: &str) -> Result<(), Box<dyn Error>> {
     use crate::{error, info, warn};
-    use std::{process::exit, io::{stdin, stdout, Write}};
-    if path.len() > 240{
+    use std::{
+        io::{stdin, stdout, Write},
+        process::exit,
+    };
+    if path.len() > 240 {
         let mut s = String::new();
         warn!("Path too long do you want enable long path in windows? [Y/n]: ");
         let _ = stdout().flush();
-        stdin().read_line(&mut s).expect("Did not enter a correct string");
-        if s.to_lowercase().trim() == "y"{
+        stdin()
+            .read_line(&mut s)
+            .expect("Did not enter a correct string");
+        if s.to_lowercase().trim() == "y" {
             use winreg::enums::*;
             use winreg::RegKey;
             let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem").join("LongPathsEnabled");
+            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem")
+                .join("LongPathsEnabled");
             let (key, _) = hklm.create_subkey(&path)?;
             key.set_value("LongPathsEnabled", &1u32)?;
             info!("LongPathsEnabled, continue")
-        }else {
+        } else {
             error!("Quitting app, path too long");
             exit(130);
         };

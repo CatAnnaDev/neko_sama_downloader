@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
+
 use reqwest::{Client, StatusCode};
 use thirtyfour::{By, WebDriver};
 
@@ -13,7 +14,7 @@ pub async fn recursive_find_url(
     base_url: &str,
     debug: &bool,
     client: &Client,
-    tmp_dl: &PathBuf
+    tmp_dl: &PathBuf,
 ) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];
 
@@ -24,7 +25,7 @@ pub async fn recursive_find_url(
         return Ok(video_url);
     }
 
-    let n = driver.find_all( By::ClassName("animeps-next-page")).await?;
+    let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
 
     if n.len() == 0 {
         all_l.extend(get_all_link_base(&driver, debug).await?);
@@ -32,16 +33,22 @@ pub async fn recursive_find_url(
 
     while n.len() != 0 {
         all_l.extend(get_all_link_base(&driver, debug).await?);
-        let n = driver.find_all( By::ClassName("animeps-next-page")).await?;
+        let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
         if !n
             .first()
             .expect("first")
-            .attr("class").await?
+            .attr("class")
+            .await?
             .expect("euh")
             .contains("disabled")
         {
             info!("Next page");
-            driver.execute(r#"document.querySelector('.animeps-next-page').click();"#, vec![]).await?;
+            driver
+                .execute(
+                    r#"document.querySelector('.animeps-next-page').click();"#,
+                    vec![],
+                )
+                .await?;
         } else {
             break;
         }
@@ -52,8 +59,16 @@ pub async fn recursive_find_url(
 }
 
 pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
-    let class = driver.find(By::XPath(r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#)).await.expect("Can't get real name direct url");
-    let path = class.inner_html().await.expect("Can't get real name direct innerhtml");
+    let class = driver
+        .find(By::XPath(
+            r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#,
+        ))
+        .await
+        .expect("Can't get real name direct url");
+    let path = class
+        .inner_html()
+        .await
+        .expect("Can't get real name direct innerhtml");
     path
 }
 
@@ -62,7 +77,7 @@ pub async fn get_all_link_base(
     debug: &bool,
 ) -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
-    let mut play_class = driver.find_all( By::ClassName("play")).await?;
+    let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
     if play_class.len() == 0 {
         play_class = driver.find_all(By::ClassName("text-left")).await?;
@@ -79,24 +94,32 @@ pub async fn get_all_link_base(
     Ok(url_found)
 }
 
-pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>, base_url: &str, client: &Client, tmp_dl: &PathBuf,) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn get_video_url(
+    driver: &WebDriver,
+    debug: &bool,
+    all_l: Vec<String>,
+    base_url: &str,
+    client: &Client,
+    tmp_dl: &PathBuf,
+) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
     for fuse_iframe in all_l {
         let url = format!("{base_url}{fuse_iframe}");
         driver.handle.goto(&url).await?;
 
-        let name = utils_data::edit_for_windows_compatibility(&driver.title().await?.replace(" - Neko Sama", ""), );
+        let name = utils_data::edit_for_windows_compatibility(
+            &driver.title().await?.replace(" - Neko Sama", ""),
+        );
 
         let url = driver.handle.find(By::Id("un_episode")).await?;
-        match url.handle.clone().enter_frame(0).await{
+        match url.handle.clone().enter_frame(0).await {
             Ok(_) => {
                 loop {
-                    match driver.handle.find( By::Id("main-player")).await{
+                    match driver.handle.find(By::Id("main-player")).await {
                         Ok(e) => {
-                            if let Ok(a) = e.attr("class").await
-                            {
-                                if let Some(a) = a{
+                            if let Ok(a) = e.attr("class").await {
+                                if let Some(a) = a {
                                     if a.contains("jwplayer") {
                                         break;
                                     }
@@ -106,12 +129,18 @@ pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>,
                             }
                             continue;
                         }
-                        Err(_) => { continue; }
+                        Err(_) => {
+                            continue;
+                        }
                     }
                 }
 
-                match driver.handle.execute(r#"return jwplayer().getPlaylistItem();"#, vec![], ).await{
-                    Ok(script) =>{
+                match driver
+                    .handle
+                    .execute(r#"return jwplayer().getPlaylistItem();"#, vec![])
+                    .await
+                {
+                    Ok(script) => {
                         info!("Get m3u8 for: {}", name);
                         match script.json()["file"].as_str() {
                             None => {
@@ -124,13 +153,14 @@ pub async fn get_video_url(driver: &WebDriver, debug: &bool, all_l: Vec<String>,
                                     &tmp_dl,
                                     &client,
                                     debug,
-                                ).await?;
+                                )
+                                    .await?;
 
                                 nb_found += 1;
                             }
                         }
                     }
-                    Err(e) =>{
+                    Err(e) => {
                         error!("Can't get .m3u8 {name} (probably 404)\n{:?}", e);
                         nb_error += 1;
                     }
@@ -163,7 +193,8 @@ pub async fn fetch_url(
                     .map(|s| s.to_string())
                     .collect::<Vec<_>>();
                 let mut out =
-                    File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap())).expect("failed to create file");
+                    File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
+                        .expect("failed to create file");
                 if *debug {
                     debug!("create .m3u8 for {}", file_name);
                 }
@@ -179,7 +210,7 @@ pub async fn fetch_url(
                         .as_bytes(),
                     &mut out,
                 )
-                .expect("Error copy");
+                    .expect("Error copy");
                 if *debug {
                     debug!("write .m3u8 for {}", file_name);
                 }

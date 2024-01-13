@@ -1,9 +1,10 @@
-use reqwest::Client;
-use serde_derive::Deserialize;
-use serde_derive::Serialize;
 use std::error::Error;
 use std::process::exit;
 use std::time::Duration;
+
+use reqwest::Client;
+use serde_derive::Deserialize;
+use serde_derive::Serialize;
 use tokio::time;
 
 use crate::{debug, warn, web};
@@ -34,8 +35,8 @@ pub(crate) async fn search_over_json(
         &client,
         &format!("https://neko-sama.fr/animes-search-{}.json", edit_lang),
     )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     let rep = resp.text().await?;
     let cleaned_name = clean_string(name);
@@ -49,7 +50,10 @@ pub(crate) async fn search_over_json(
         let max_length = cleaned_name.len().max(cleaned_title.len()) as f64;
         let levenshtein_similarity = 1.0 - levenshtein_distance / max_length;
 
-        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8 || levenshtein_similarity > 0.8 || cleaned_title.contains(&cleaned_name) {
+        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8
+            || levenshtein_similarity > 0.8
+            || cleaned_title.contains(&cleaned_name)
+        {
             let x = ProcessingUrl {
                 name: x.title,
                 ep: x.nb_eps,

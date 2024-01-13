@@ -2,13 +2,16 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, fs, time::Instant, thread};
+use std::{error::Error, fs, thread, time::Instant};
 use std::time::Duration;
+
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
+
 use crate::chrome_spawn::{kill_chrome, spawn_chrome};
 use crate::search::ProcessingUrl;
 
+mod chrome_spawn;
 mod cmd_line_parser;
 mod html_parser;
 mod log_color;
@@ -20,25 +23,26 @@ mod utils_check;
 mod utils_data;
 mod vlc_playlist_builder;
 mod web;
-mod chrome_spawn;
 
 enum Scan {
     Download,
-    Search
+    Search,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
 
-    header!(r#"
+    header!(
+        r#"
   _   _      _                   _ _
  | \ | | ___| | _____         __| | |
  |  \| |/ _ \ |/ / _ \ _____ / _` | |
  | |\  |  __/   < (_) |_____| (_| | |
  |_| \_|\___|_|\_\___/       \__,_|_|
                           by PsykoDev
-"#);
+"#
+    );
 
     if new_args.url_or_search_word.is_empty() {
         warn!("prefers use ./anime_dl -h");
@@ -50,7 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     info!(
-    "Config:\n\
+        "Config:\n\
     Url or Search:\t{}\n\
     Language:\t{}\n\
     Threads:\t{}\n\
@@ -85,8 +89,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut processing_url = vec![];
     let mut _scan = Scan::Search;
 
-    if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") { _scan = Scan::Download; }
-    else { _scan = Scan::Search; }
+    if new_args
+        .url_or_search_word
+        .starts_with("https://neko-sama.fr/")
+    {
+        _scan = Scan::Download;
+    } else {
+        _scan = Scan::Search;
+    }
 
     match _scan {
         Scan::Search => {
@@ -95,35 +105,55 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 &new_args.language,
                 &new_args.debug,
             )
-            .await?;
+                .await?;
 
             let mut ep = 0;
             let mut film = 0;
-            let _: Vec<_> = find.iter().map(|s| {
-                if s.ep.starts_with("Film") { film += 1;
-                } else { ep += s.ep.split_whitespace().nth(0).unwrap().parse::<i32>().unwrap_or(1);};
-            }).collect();
+            let _: Vec<_> = find
+                .iter()
+                .map(|s| {
+                    if s.ep.starts_with("Film") {
+                        film += 1;
+                    } else {
+                        ep +=
+                            s.ep.split_whitespace()
+                                .nth(0)
+                                .unwrap()
+                                .parse::<i32>()
+                                .unwrap_or(1);
+                    };
+                })
+                .collect();
 
-            info!("Seasons found: {} Episode found: {} ({} ~Go Total) Films found {} ({} ~Go Total)", find.len(), ep, ep * 250 / 1024, film, film * 1300 / 1024);
+            info!(
+                "Seasons found: {} Episode found: {} ({} ~Go Total) Films found {} ({} ~Go Total)",
+                find.len(),
+                ep,
+                ep * 250 / 1024,
+                film,
+                film * 1300 / 1024
+            );
             let multi_select = Question::multi_select("Season")
                 .message("What seasons do you want?")
-                .choices(find.iter().map(|s| format!("{} ({})\n[{}]", s.name, s.ep, s.genre)).collect::<Vec<String>>())
+                .choices(
+                    find.iter()
+                        .map(|s| format!("{} ({})\n[{}]", s.name, s.ep, s.genre))
+                        .collect::<Vec<String>>(),
+                )
                 .on_esc(OnEsc::Terminate)
                 .page_size(20)
                 .should_loop(false)
                 .build();
 
             let answer = prompt_one(multi_select)?;
-            let matching_processing_urls: Vec<_> =
-                answer
-                    .try_into_list_items()
-                    .unwrap()
-                    .iter()
-                    .filter_map(|number|  find.get(number.index).cloned() )
-                    .collect();
+            let matching_processing_urls: Vec<_> = answer
+                .try_into_list_items()
+                .unwrap()
+                .iter()
+                .filter_map(|number| find.get(number.index).cloned())
+                .collect();
 
             processing_url.extend(matching_processing_urls);
-
         }
 
         Scan::Download => {
@@ -141,7 +171,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     for entry in fs::read_dir(&path.extract_path)? {
         if let Ok(x) = entry {
             if let Some(file_name) = x.file_name().to_str() {
-
                 #[cfg(target_os = "windows")]
                 if file_name.ends_with(".exe") {
                     if file_name.contains("chromedriver") {
@@ -152,10 +181,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
 
-                #[cfg(any(
-                    target_os = "macos",
-                    target_os = "linux"
-                ))]
+                #[cfg(any(target_os = "macos", target_os = "linux"))]
                 if file_name.ends_with("") {
                     if file_name.contains("chromedriver") {
                         chrome_check = true;
@@ -192,7 +218,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             tokio::time::sleep(Duration::from_secs(1)).await;
 
             for (index, x) in processing_url.iter().enumerate() {
-                header!("Step {} / {}",index+1, processing_url.len());
+                header!("Step {} / {}", index + 1, processing_url.len());
                 info!("Process: {}", x.url);
                 process_part1::start(
                     &x.url,
@@ -201,12 +227,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     &path.u_block_path,
                     &path.ffmpeg_path,
                     thread,
-                    &new_args
-                ).await?;
+                    &new_args,
+                )
+                    .await?;
             }
 
             kill_chrome(child)?;
-            info!("Global time: {}",utils_data::time_to_human_time(global_time));
+            info!(
+                "Global time: {}",
+                utils_data::time_to_human_time(global_time)
+            );
         }
         false => {
             if !ffmpeg_check && chrome_check {
@@ -241,7 +271,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn _pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
-    let numbers: Vec<usize> = input.split(|c: char| !c.is_digit(10)).filter_map(|s| s.parse().ok()).collect();
-    Ok(numbers.iter().filter_map(|&number| { processing_url.get(number - 1).map(|url| url.clone()) }).collect())
+fn _pick_season_list(
+    input: &str,
+    processing_url: Vec<ProcessingUrl>,
+) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+    let numbers: Vec<usize> = input
+        .split(|c: char| !c.is_digit(10))
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    Ok(numbers
+        .iter()
+        .filter_map(|&number| processing_url.get(number - 1)
+            .map(|url| url.clone()))
+        .collect())
 }
