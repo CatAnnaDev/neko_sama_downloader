@@ -12,9 +12,9 @@
   - Multi thread to download and process video 
   - Build vlc playlit at the end of process ( if contain 2 or more video )
   - Can download only 1 episode or entire season ( based on url given )
-  - Can search all seasons by same name and download all found seasons
+  - Can search all seasons by same name and download all seasons found 
   - ublock origin is added by default
-  - Can search then select what seasoans you want, All or by unique id or multiple id
+  - Can search then select what seasons you want, All or by unique id or multiple id
 
 # Note
 - (Multi thread) 1 thread can download between 3 and 5 mo/s ( limited by website ) so 20 thread is good for 1gb/s fiber

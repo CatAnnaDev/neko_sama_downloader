@@ -110,7 +110,6 @@ jobs:
         with:
           name: result
           path: ./artifacts
-          compression-level: 9
       - name: List
         run: find ./artifacts
       - name: Release
