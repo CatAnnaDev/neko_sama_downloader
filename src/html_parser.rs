@@ -5,8 +5,9 @@ use std::path::PathBuf;
 
 use reqwest::{Client, StatusCode};
 use thirtyfour::{By, WebDriver};
+use m3u8_rs::Playlist;
 
-use crate::{debug, error, info, utils_data, web};
+use crate::{debug, error, info, utils_data, web, warn};
 
 pub async fn recursive_find_url(
     driver: &WebDriver,
@@ -182,28 +183,49 @@ pub async fn fetch_url(
     debug: &bool,
 ) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await;
+    let mut good_url = String::new();
     match body {
         Ok(body) => match body.status() {
             StatusCode::OK => {
-                let split = body
-                    .text()
-                    .await
-                    .expect("body invalid")
-                    .lines()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>();
+                let await_response = body.text().await?;
+                let split = await_response.as_bytes();
+                    let parsed = m3u8_rs::parse_playlist_res(split);
+                    match parsed {
+                        Ok(Playlist::MasterPlaylist(pl)) => {
+                            for ele in pl.variants {
+                                let resolution = ele.resolution.expect("No resolution found").height;
+                                let test = web::web_request(&client, &ele.uri).await;
+                                match test {
+                                    Ok(code) => match code.status() {
+                                        StatusCode::OK => {
+                                            info!("Download as {}p", resolution);
+                                            good_url = ele.uri;
+                                            break;
+                                        },
+                                        _ => {
+                                            warn!("{}p not found, try next", resolution);
+                                        }
+                                    },
+                                    Err(e) => error!("m3u8 check resolution error {}", e),
+                                }
+                            }
+                        },
+                        Ok(Playlist::MediaPlaylist(_)) => {},
+                        Err(e) => println!("Error parse m3u8 : {:?}", e)
+                    }
+
                 let mut out =
                     File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
                         .expect("failed to create file");
                 if *debug {
                     debug!("create .m3u8 for {}", file_name);
                 }
-                let link = &split[2];
+
                 if *debug {
-                    debug!("url .m3u8 {}", link);
+                    debug!("url .m3u8 {}", good_url);
                 }
                 io::copy(
-                    &mut web::web_request(&client, link)
+                    &mut web::web_request(&client, &good_url)
                         .await?
                         .text()
                         .await?
@@ -215,7 +237,7 @@ pub async fn fetch_url(
                     debug!("write .m3u8 for {}", file_name);
                 }
             }
-            _ => error!("Error not OK: {:?}", body.status()),
+            _ => error!("Error base url check: {:?}", body.status()),
         },
         Err(e) => {
             error!("fetch_url: {:?}", e)

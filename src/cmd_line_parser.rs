@@ -45,7 +45,7 @@ pub struct Args {
     short = 'i',
     long = "ignore",
     default_value_t = true,
-    help = "ignore confirmation to continue if 1 or more episodes is missing to complete the season [default: true]",
+    help = "ignore confirmation to continue if 1 or more episodes is missing to complete the season [default: false]",
     action = ArgAction::SetFalse
     )]
     pub ignore_alert_missing_episode: bool,
