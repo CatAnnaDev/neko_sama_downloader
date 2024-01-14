@@ -192,6 +192,9 @@ pub async fn fetch_url(
                     let parsed = m3u8_rs::parse_playlist_res(split);
                     match parsed {
                         Ok(Playlist::MasterPlaylist(pl)) => {
+                            if *debug{
+                                debug!("MasterPlaylist {:#?}", pl);
+                            }
                             for ele in pl.variants {
                                 let resolution = ele.resolution.expect("No resolution found").height;
                                 let test = web::web_request(&client, &ele.uri).await;
@@ -200,6 +203,9 @@ pub async fn fetch_url(
                                         StatusCode::OK => {
                                             info!("Download as {}p", resolution);
                                             good_url = ele.uri;
+                                            if *debug {
+                                                debug!("url .m3u8 {}", good_url);
+                                            }
                                             break;
                                         },
                                         _ => {
@@ -217,13 +223,11 @@ pub async fn fetch_url(
                 let mut out =
                     File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
                         .expect("failed to create file");
+
                 if *debug {
                     debug!("create .m3u8 for {}", file_name);
                 }
 
-                if *debug {
-                    debug!("url .m3u8 {}", good_url);
-                }
                 io::copy(
                     &mut web::web_request(&client, &good_url)
                         .await?

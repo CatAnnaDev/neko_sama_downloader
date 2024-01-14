@@ -1,11 +1,21 @@
 use std::error::Error;
-use std::fs;
+use std::{env, fs};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
 
 use regex::Regex;
 use requestty::Answer;
+
+pub fn exe_name() -> String {
+    env::args().next()
+        .as_ref()
+        .map(Path::new)
+        .and_then(Path::file_name)
+        .and_then(OsStr::to_str)
+        .map(String::from).expect("Can't find executable name")
+}
 
 pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     let question = requestty::Question::confirm("anonymous")
@@ -14,7 +24,7 @@ pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     Ok(requestty::prompt_one(question)?)
 }
 
-pub fn kill_process() -> Result<(), Box<dyn Error>> {
+pub fn _kill_process() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]
         let _ = Command::new("taskkill")
         .args(["/t", "/f", "/im", "chromedriver.exe"])

@@ -39,3 +39,13 @@ pub(crate) static FFMPEG_PATH: &str =
     "static build: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz\n
     arch linux, other: sudo pacman -S ffmpeg\n
     ubuntu, debian, other: sudo apt install ffmpeg";
+
+
+pub(crate) static HEADER: &str =r#"
+  _   _      _                   _ _
+ | \ | | ___| | _____         __| | |
+ |  \| |/ _ \ |/ / _ \ _____ / _` | |
+ | |\  |  __/   < (_) |_____| (_| | |
+ |_| \_|\___|_|\_\___/       \__,_|_|
+                          by PsykoDev
+"#;
