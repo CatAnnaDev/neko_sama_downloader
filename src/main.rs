@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     );
 
     if new_args.url_or_search_word.is_empty() {
-        warn!("prefers use ./anime_dl -h");
+        warn!("prefers use ./neko_dl -h");
         let questions = Question::input("keyword")
             .message("Enter url to direct download or keyword to search: ")
             .build();

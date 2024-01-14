@@ -27,29 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anime_dl"
-version = "0.6.0"
-dependencies = [
- "clap",
- "crossbeam",
- "crossbeam-channel",
- "ctrlc",
- "indicatif",
- "m3u8-rs",
- "quick-xml",
- "regex",
- "requestty",
- "reqwest",
- "serde",
- "serde_derive",
- "serde_json",
- "strsim 0.11.0",
- "thirtyfour",
- "tokio",
- "winreg 0.52.0",
-]
-
-[[package]]
 name = "anstream"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -817,6 +794,29 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "neko_dl"
+version = "0.8.0"
+dependencies = [
+ "clap",
+ "crossbeam",
+ "crossbeam-channel",
+ "ctrlc",
+ "indicatif",
+ "m3u8-rs",
+ "quick-xml",
+ "regex",
+ "requestty",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "strsim 0.11.0",
+ "thirtyfour",
+ "tokio",
+ "winreg 0.52.0",
 ]
 
 [[package]]
