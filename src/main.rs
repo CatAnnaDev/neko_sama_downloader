@@ -2,7 +2,7 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, thread, time::Instant};
+use std::{error::Error, time::Instant};
 use std::time::Duration;
 
 use clap::Parser;
@@ -24,9 +24,9 @@ mod utils_data;
 mod vlc_playlist_builder;
 mod web;
 
-enum Scan {
-    Download,
-    Search,
+enum Scan<'a> {
+    Download(&'a str),
+    Search(&'a str),
 }
 
 #[tokio::main]
@@ -36,35 +36,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if new_args.url_or_search_word.is_empty() {
         warn!("prefers use ./{} -h", utils_data::exe_name());
-        let questions = Question::input("keyword")
-            .message("Enter url to direct download or keyword to search: ")
-            .build();
-        let reply = prompt_one(questions)?;
-        new_args.url_or_search_word = reply.as_string().unwrap().trim().to_string();
+        if let Ok(reply) = utils_data::ask_something("Enter url to direct download or keyword to search: ") {
+            new_args.url_or_search_word = reply.as_string().unwrap().trim().to_string();
+        }
     }
 
     info!("{}", new_args);
 
-    let mut thread = new_args.thread as usize;
-    let max_thread = thread::available_parallelism()?.get() * 4;
-    if thread > max_thread {
-        warn!("Max thread for your cpu is between 1 and {}", max_thread);
-        thread = max_thread;
-        warn!("Update thread for {} continue", thread);
-    }
-
+    let thread = thread_pool::max_thread_check(&new_args)?;
     let mut processing_url = vec![];
-    let mut _scan = Scan::Search;
 
-    if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") {
-        _scan = Scan::Download;
-    } else {
-        _scan = Scan::Search;
-    }
-
-    match _scan {
-        Scan::Search => {
-            let find = search::search_over_json(&new_args.url_or_search_word, &new_args.language, &new_args.debug, ).await?;
+    match utils_data::search_download(&new_args) {
+        Scan::Search(keyword) => {
+            let find = search::search_over_json(&keyword, &new_args.language, &new_args.debug, ).await?;
 
             let mut ep = 0;
             let mut film = 0;
@@ -81,7 +65,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 .unwrap_or(1);
                     };
                 }).collect();
-
             header!("Seasons found: {} Episode found: {} ({}~ Go Total) Films found {} ({}~ Go Total)",find.len(),ep,ep * 250 / 1024,film,film * 1300 / 1024);
 
             let multi_select = Question::multi_select("Season")
@@ -92,30 +75,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             format!("{} ({})\n[{}]", s.name, s.ep, if tmp_genre.is_empty(){ String::from("no tag found") }else { tmp_genre })
                         }).collect::<Vec<String>>(),
                 ).on_esc(OnEsc::Terminate).page_size(20).should_loop(false).build();
-
             let answer = prompt_one(multi_select)?;
+
             let matching_processing_urls: Vec<_> = answer.try_into_list_items().unwrap()
                 .iter().filter_map(|number| find.get(number.index).cloned()).collect();
 
             processing_url.extend(matching_processing_urls);
         }
 
-        Scan::Download => {
-            processing_url.extend(vec![ProcessingUrl { name: "".to_string(), ep: "".to_string(), url: new_args.url_or_search_word.clone(), genre: "".to_string(), }]);
+        Scan::Download(url) => {
+            processing_url.extend(vec![ProcessingUrl { name: "".to_string(), ep: "".to_string(), url: url.to_string() , genre: "".to_string() }]);
         }
     }
 
     let path = utils_check::confirm().await?;
 
     let global_time = Instant::now();
-    if new_args.debug {
-        debug!("spawn chrome process");
-    }
+    if new_args.debug { debug!("spawn chrome process");}
 
     let child = spawn_chrome(&path.chrome_path)?;
-    if new_args.debug {
-        debug!("wait 1sec chrome process spawn correctly");
-    }
+    if new_args.debug { debug!("wait 1sec chrome process spawn correctly"); }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     for (index, x) in processing_url.iter().enumerate() {

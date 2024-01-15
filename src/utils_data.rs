@@ -7,6 +7,16 @@ use std::time::Instant;
 
 use regex::Regex;
 use requestty::Answer;
+use crate::cmd_line_parser::Args;
+use crate::Scan;
+
+pub fn search_download(new_args: &Args) -> Scan {
+    if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") {
+        Scan::Download(&new_args.url_or_search_word)
+    } else {
+        Scan::Search(&new_args.url_or_search_word)
+    }
+}
 
 pub fn exe_name() -> String {
     env::args().next()

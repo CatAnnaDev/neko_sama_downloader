@@ -9,7 +9,7 @@ use tokio::time;
 
 use crate::{debug, warn, web};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ProcessingUrl {
     pub name: String,
     pub ep: String,
@@ -17,7 +17,7 @@ pub struct ProcessingUrl {
     pub genre: String,
 }
 
-pub(crate) async fn search_over_json(
+pub async fn search_over_json(
     name: &str,
     lang: &str,
     debug: &bool,
