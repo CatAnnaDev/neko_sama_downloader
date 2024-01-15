@@ -1,10 +1,4 @@
-use std::error::Error;
-use std::fs;
-use std::path::Path;
-use std::process::exit;
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
-
+use std::{error::Error, fs, path::Path, process::exit, sync::mpsc, time::{Duration, Instant}};
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
@@ -13,20 +7,17 @@ use crate::{
     debug,
     error,
     info,
-    mod_file::{
-        html_parser,
-        html_parser::get_base_name_direct_url
-    },
-    mod_file::{
-        utils_data,
-        utils_data::ask_something
-    },
-    mod_file::cmd_line_parser::Args,
-    mod_file::thread_pool::ThreadPool,
-    mod_file::utils_check::AllPath,
-    mod_file::vlc_playlist_builder,
-    mod_file::web,
     warn,
+};
+
+use crate::mod_file::{
+    {html_parser, html_parser::get_base_name_direct_url},
+    {utils_data, utils_data::ask_something},
+    cmd_line_parser::Args,
+    thread_pool::ThreadPool,
+    utils_check::AllPath,
+    vlc_playlist_builder,
+    web,
 };
 
 pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args) -> Result<(), Box<dyn Error>> {

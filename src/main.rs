@@ -2,14 +2,11 @@
 #![feature(fs_try_exists)]
 #![feature(stmt_expr_attributes)]
 
-use std::{error::Error, time::Instant};
-use std::time::Duration;
-
+use std::{error::Error, time::Instant, time::Duration};
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 mod mod_file;
-use crate::mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, chrome_spawn::{kill_chrome, spawn_chrome}};
-
+use mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, chrome_spawn::{kill_chrome, spawn_chrome}};
 
 enum Scan<'a> {
     Download(&'a str),

@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
-
-use clap::ArgAction;
-use clap::Parser;
+use clap::{ArgAction, Parser};
 
 #[derive(Parser, Debug)]
 #[command(author = "PsykoDev", version, about, long_about = None)]

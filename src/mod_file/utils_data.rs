@@ -1,15 +1,7 @@
-use std::{env, fs};
-use std::error::Error;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::Instant;
-
+use std::{env, fs, error::Error, ffi::OsStr, path::{Path, PathBuf}, process::{Command, Stdio}, time::Instant};
 use regex::Regex;
 use requestty::Answer;
-
-use crate::mod_file::cmd_line_parser::Args;
-use crate::Scan;
+use crate::{mod_file::cmd_line_parser::Args, Scan};
 
 pub fn search_download(new_args: &Args) -> Scan {
     if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") {

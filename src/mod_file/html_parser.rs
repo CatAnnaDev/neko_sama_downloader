@@ -1,13 +1,10 @@
-use std::error::Error;
-use std::fs::File;
-use std::io;
-use std::path::PathBuf;
-
+use std::{error::Error, fs::File, io, path::PathBuf};
 use m3u8_rs::Playlist;
 use reqwest::{Client, StatusCode};
 use thirtyfour::{By, WebDriver};
 
-use crate::{debug, error, info, mod_file::cmd_line_parser::Args, mod_file::utils_check::AllPath, mod_file::utils_data, mod_file::web, warn};
+use crate::{debug, error, info, warn};
+use crate::mod_file::{cmd_line_parser::Args, utils_check::AllPath, utils_data, web};
 
 pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];

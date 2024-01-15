@@ -1,12 +1,5 @@
-use std::{env, fs};
-use std::error::Error;
-use std::fs::File;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::exit;
-
+use std::{env, {fs, fs::File}, error::Error, io::Write, path::PathBuf, process::exit};
 use reqwest::Client;
-
 use crate::{error, info, mod_file::search::ProcessingUrl, mod_file::static_data, mod_file::utils_data};
 
 #[derive(Clone)]

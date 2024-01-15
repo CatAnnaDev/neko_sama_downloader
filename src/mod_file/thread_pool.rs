@@ -1,9 +1,5 @@
-use std::error::Error;
-use std::sync::Arc;
-use std::thread;
-
+use std::{error::Error, sync::Arc, thread};
 use crossbeam::queue::ArrayQueue;
-
 use crate::{mod_file::cmd_line_parser::Args, warn};
 
 pub fn max_thread_check(new_args: &Args) -> Result<usize, Box<dyn Error>> {

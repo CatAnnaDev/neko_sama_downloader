@@ -1,9 +1,5 @@
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::time::Instant;
-
+use std::{path::PathBuf, process::{Command, Stdio},time::Instant};
 use reqwest::{Client, Response};
-
 use crate::{debug, warn};
 
 pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &bool) -> i16 {

@@ -1,10 +1,6 @@
-use std::error::Error;
-use std::process::exit;
-use std::time::Duration;
-
+use std::{error::Error, process::exit, time::Duration};
 use reqwest::Client;
-use serde_derive::Deserialize;
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 use tokio::time;
 
 use crate::{debug, mod_file::web, warn};
