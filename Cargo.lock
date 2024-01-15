@@ -806,6 +806,7 @@ dependencies = [
  "ctrlc",
  "indicatif",
  "m3u8-rs",
+ "nom",
  "quick-xml",
  "regex",
  "requestty",

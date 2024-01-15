@@ -64,7 +64,7 @@ pub fn custom_sort(vec: &mut Vec<(PathBuf, PathBuf)>) {
     });
 }
 
-pub fn custom_sort_vlc(vec: &mut Vec<(PathBuf, &String)>) {
+pub fn custom_sort_vlc(vec: &mut Vec<(PathBuf, String)>) {
     vec.sort_by(|a, b| {
         let num_a = extract_episode_number(&a.0.to_str().unwrap());
         let num_b = extract_episode_number(&b.0.to_str().unwrap());

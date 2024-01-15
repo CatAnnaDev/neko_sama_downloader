@@ -2,7 +2,7 @@ use std::{error::Error, fs::File, path::PathBuf};
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
 
-pub fn new(track: Vec<(PathBuf, &String)>) -> Result<(), Box<dyn Error>> {
+pub fn new(track: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
     let save_path = track.first().unwrap().0.parent().unwrap();
     let binding = track.first().unwrap().1.split("/").collect::<Vec<_>>();
     let save_name = &binding.last().unwrap();
