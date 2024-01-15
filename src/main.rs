@@ -4,9 +4,12 @@
 
 use std::{error::Error, time::Instant};
 use std::time::Duration;
+
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
+
 use chrome_spawn::{kill_chrome, spawn_chrome};
+
 use crate::search::ProcessingUrl;
 
 mod chrome_spawn;
@@ -46,32 +49,32 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     match utils_data::search_download(&new_args) {
         Scan::Search(keyword) => {
-            let find = search::search_over_json(&keyword, &new_args.language, &new_args.debug, ).await?;
+            let find = search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
 
             let mut ep = 0;
             let mut film = 0;
 
             let _: Vec<_> = find.iter().map(|s| {
-                    if s.ep.starts_with("Film") {
-                        film += 1;
-                    } else {
-                        ep +=
-                            s.ep.split_whitespace()
-                                .nth(0)
-                                .unwrap()
-                                .parse::<i32>()
-                                .unwrap_or(1);
-                    };
-                }).collect();
+                if s.ep.starts_with("Film") {
+                    film += 1;
+                } else {
+                    ep +=
+                        s.ep.split_whitespace()
+                            .nth(0)
+                            .unwrap()
+                            .parse::<i32>()
+                            .unwrap_or(1);
+                };
+            }).collect();
             header!("Seasons found: {} Episode found: {} ({}~ Go Total) Films found {} ({}~ Go Total)",find.len(),ep,ep * 250 / 1024,film,film * 1300 / 1024);
 
             let multi_select = Question::multi_select("Season")
                 .message("What seasons do you want?")
                 .choices(find.iter()
-                        .map(|s| {
-                            let tmp_genre = s.clone().genre;
-                            format!("{} ({})\n[{}]", s.name, s.ep, if tmp_genre.is_empty(){ String::from("no tag found") }else { tmp_genre })
-                        }).collect::<Vec<String>>(),
+                             .map(|s| {
+                                 let tmp_genre = s.clone().genre;
+                                 format!("{} ({})\n[{}]", s.name, s.ep, if tmp_genre.is_empty() { String::from("no tag found") } else { tmp_genre })
+                             }).collect::<Vec<String>>(),
                 ).on_esc(OnEsc::Terminate).page_size(20).should_loop(false).build();
             let answer = prompt_one(multi_select)?;
 
@@ -82,14 +85,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
 
         Scan::Download(url) => {
-            processing_url.extend(vec![ProcessingUrl { name: "".to_string(), ep: "".to_string(), url: url.to_string() , genre: "".to_string() }]);
+            processing_url.extend(vec![ProcessingUrl { name: "".to_string(), ep: "".to_string(), url: url.to_string(), genre: "".to_string() }]);
         }
     }
 
     let path = utils_check::confirm().await?;
 
     let global_time = Instant::now();
-    if new_args.debug { debug!("spawn chrome process");}
+    if new_args.debug { debug!("spawn chrome process"); }
 
     let child = spawn_chrome(&path.chrome_path)?;
     if new_args.debug { debug!("wait 1sec chrome process spawn correctly"); }
@@ -98,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     for (index, x) in processing_url.iter().enumerate() {
         header!("Step {} / {}", index + 1, processing_url.len());
         info!("Process: {}", x.url);
-        process_part1::start(&x.url, &path, thread, &new_args, ).await?;
+        process_part1::start(&x.url, &path, thread, &new_args).await?;
     }
 
     kill_chrome(child)?;

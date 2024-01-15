@@ -11,7 +11,7 @@ use crate::{debug, error, info, utils_data, warn, web};
 use crate::cmd_line_parser::Args;
 use crate::utils_check::AllPath;
 
-pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str, args: &Args, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];
 
     if _url_test.contains("/episode/") {
@@ -68,7 +68,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
     path
 }
 
-pub async fn get_all_link_base(driver: &WebDriver, args: &Args, ) -> Result<Vec<String>, Box<dyn Error>> {
+pub async fn get_all_link_base(driver: &WebDriver, args: &Args) -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -87,7 +87,7 @@ pub async fn get_all_link_base(driver: &WebDriver, args: &Args, ) -> Result<Vec<
     Ok(url_found)
 }
 
-pub async fn get_video_url(driver: &WebDriver, args: &Args, all_l: Vec<String>, base_url: &str, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn get_video_url(driver: &WebDriver, args: &Args, all_l: Vec<String>, base_url: &str, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
     for fuse_iframe in all_l {
@@ -160,7 +160,7 @@ pub async fn get_video_url(driver: &WebDriver, args: &Args, all_l: Vec<String>, 
     Ok((nb_found, nb_error))
 }
 
-pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args, ) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await;
     let mut good_url = String::new();
     match body {
@@ -168,36 +168,36 @@ pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Cl
             StatusCode::OK => {
                 let await_response = body.text().await?;
                 let split = await_response.as_bytes();
-                    let parsed = m3u8_rs::parse_playlist_res(split);
-                    match parsed {
-                        Ok(Playlist::MasterPlaylist(pl)) => {
-                            if args.debug{
-                                debug!("MasterPlaylist {:#?}", pl);
-                            }
-                            for ele in pl.variants {
-                                let resolution = ele.resolution.expect("No resolution found").height;
-                                let test = web::web_request(&client, &ele.uri).await;
-                                match test {
-                                    Ok(code) => match code.status() {
-                                        StatusCode::OK => {
-                                            info!("Download as {}p", resolution);
-                                            good_url = ele.uri;
-                                            if args.debug {
-                                                debug!("url .m3u8 {}", good_url);
-                                            }
-                                            break;
-                                        },
-                                        _ => {
-                                            warn!("{}p not found, try next", resolution);
+                let parsed = m3u8_rs::parse_playlist_res(split);
+                match parsed {
+                    Ok(Playlist::MasterPlaylist(pl)) => {
+                        if args.debug {
+                            debug!("MasterPlaylist {:#?}", pl);
+                        }
+                        for ele in pl.variants {
+                            let resolution = ele.resolution.expect("No resolution found").height;
+                            let test = web::web_request(&client, &ele.uri).await;
+                            match test {
+                                Ok(code) => match code.status() {
+                                    StatusCode::OK => {
+                                        info!("Download as {}p", resolution);
+                                        good_url = ele.uri;
+                                        if args.debug {
+                                            debug!("url .m3u8 {}", good_url);
                                         }
-                                    },
-                                    Err(e) => error!("m3u8 check resolution error {}", e),
-                                }
+                                        break;
+                                    }
+                                    _ => {
+                                        warn!("{}p not found, try next", resolution);
+                                    }
+                                },
+                                Err(e) => error!("m3u8 check resolution error {}", e),
                             }
-                        },
-                        Ok(Playlist::MediaPlaylist(_)) => {},
-                        Err(e) => println!("Error parse m3u8 : {:?}", e)
+                        }
                     }
+                    Ok(Playlist::MediaPlaylist(_)) => {}
+                    Err(e) => println!("Error parse m3u8 : {:?}", e)
+                }
 
                 let mut out =
                     File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))

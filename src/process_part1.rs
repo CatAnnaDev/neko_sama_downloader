@@ -16,7 +16,7 @@ use crate::thread_pool::ThreadPool;
 use crate::utils_check::AllPath;
 use crate::utils_data::ask_something;
 
-pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, ) -> Result<(), Box<dyn Error>> {
+pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
     let before = Instant::now();

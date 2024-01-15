@@ -30,7 +30,7 @@ pub enum Job {
 
 impl ThreadPool {
     pub fn new(mut size: usize, capa: usize) -> ThreadPool {
-        if size <= 0{ size = 1 }
+        if size <= 0 { size = 1 }
         let queue = Arc::new(ArrayQueue::<Job>::new(capa));
         let mut workers = Vec::with_capacity(size);
         for _ in 0..size {

@@ -41,7 +41,7 @@ pub const FFMPEG_PATH: &str =
     ubuntu, debian, other: sudo apt install ffmpeg";
 
 
-pub const HEADER: &str =r#"
+pub const HEADER: &str = r#"
   _   _      _                   _ _
  | \ | | ___| | _____         __| | |
  |  \| |/ _ \ |/ / _ \ _____ / _` | |
