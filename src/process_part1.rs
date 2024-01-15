@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::exit;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -13,17 +13,10 @@ use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, w
 use crate::cmd_line_parser::Args;
 use crate::html_parser::get_base_name_direct_url;
 use crate::thread_pool::ThreadPool;
+use crate::utils_check::AllPath;
 use crate::utils_data::ask_something;
 
-pub async fn start(
-    url_test: &str,
-    exe_path: &Path,
-    tmp_dl: &PathBuf,
-    ublock: &PathBuf,
-    ffmpeg: &PathBuf,
-    mut thread: usize,
-    args: &Args,
-) -> Result<(), Box<dyn Error>> {
+pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, ) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
 
     let before = Instant::now();
@@ -37,7 +30,7 @@ pub async fn start(
     }
     let mut prefs = ChromeCapabilities::new();
     prefs
-        .add_extension(ublock)
+        .add_extension(&*path.u_block_path)
         .expect("can't install ublock origin");
     prefs.set_ignore_certificate_errors()?;
 
@@ -61,11 +54,9 @@ pub async fn start(
         &driver,
         url_test,
         base_url,
-        tmp_dl,
-        &args.debug,
+        path,
         &client,
-        &args.ignore_alert_missing_episode,
-        &args.language,
+        &args,
     )
         .await?;
 
@@ -117,7 +108,7 @@ pub async fn start(
 
     let mut save_path_vlc = vec![];
 
-    let mut m3u8_path_folder: Vec<_> = fs::read_dir(tmp_dl)?
+    let mut m3u8_path_folder: Vec<_> = fs::read_dir(&path.tmp_dl)?
         .filter_map(|entry| {
             let save = &mut save_path_vlc;
 
@@ -125,9 +116,9 @@ pub async fn start(
             let file_path = entry?.path();
 
             if file_path.is_file() {
-                let output_path = Path::new(tmp_dl).join(file_path.file_name()?);
+                let output_path = Path::new(&path.tmp_dl).join(file_path.file_name()?);
                 let name =
-                    exe_path
+                    path.exe_path.parent().unwrap()
                         .join(&save_path)
                         .join(utils_data::edit_for_windows_compatibility(
                             &file_path
@@ -161,7 +152,7 @@ pub async fn start(
 
     for (output_path, name) in m3u8_path_folder {
         let tx = tx.clone();
-        let ffmpeg = ffmpeg.clone();
+        let ffmpeg = path.ffmpeg_path.clone();
         let debug = args.debug.clone();
         pool.execute(move || {
             tx.send(web::download_build_video(
@@ -195,7 +186,7 @@ pub async fn start(
     let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
 
     info!("Clean tmp dir!");
-    utils_data::remove_dir_contents(tmp_dl);
+    utils_data::remove_dir_contents(&path.tmp_dl);
 
     info!(
         "Done in: {} for {} episodes and {} error",
@@ -204,23 +195,13 @@ pub async fn start(
     Ok(())
 }
 
-pub async fn scan_main_page(
-    save_path: &mut String,
-    drivers: &WebDriver,
-    url_test: &str,
-    base_url: &str,
-    tmp_dl: &PathBuf,
-    debug: &bool,
-    client: &Client,
-    ignore_warn: &bool,
-    langue: &String,
-) -> Result<(u16, u16), Box<dyn Error>> {
-    fs::create_dir_all(tmp_dl)?;
+pub async fn scan_main_page(save_path: &mut String, drivers: &WebDriver, url_test: &str, base_url: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
+    fs::create_dir_all(&path.tmp_dl)?;
     let mut _path = String::new();
     if !url_test.contains("/episode/") {
         _path = format!(
             "Anime_Download/{}/{}",
-            langue.to_uppercase(),
+            args.language.to_uppercase(),
             &utils_data::edit_for_windows_compatibility(
                 &drivers
                     .title()
@@ -232,7 +213,7 @@ pub async fn scan_main_page(
     } else {
         _path = format!(
             "Anime_Download/{}/{}",
-            langue.to_uppercase(),
+            args.language.to_uppercase(),
             &utils_data::edit_for_windows_compatibility(
                 &get_base_name_direct_url(&drivers)
                     .await
@@ -243,8 +224,8 @@ pub async fn scan_main_page(
     }
     save_path.push_str(_path.as_str());
 
-    let season_path = tmp_dl.parent().unwrap().join(save_path);
-    if *ignore_warn {
+    let season_path = path.tmp_dl.parent().unwrap().join(save_path);
+    if args.ignore_alert_missing_episode {
         if fs::try_exists(season_path.clone()).unwrap() {
             warn!("Path already exist\n{}", season_path.display());
             if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
@@ -260,7 +241,7 @@ pub async fn scan_main_page(
 
     fs::create_dir_all(season_path)?;
     Ok(
-        html_parser::recursive_find_url(&drivers, url_test, base_url, debug, &client, &tmp_dl)
+        html_parser::recursive_find_url(&drivers, url_test, base_url, args, &client, path)
             .await?,
     )
 }

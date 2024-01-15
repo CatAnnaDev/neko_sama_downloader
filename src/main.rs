@@ -4,10 +4,8 @@
 
 use std::{error::Error, time::Instant};
 use std::time::Duration;
-
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
-
 use chrome_spawn::{kill_chrome, spawn_chrome};
 use crate::search::ProcessingUrl;
 
@@ -100,7 +98,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     for (index, x) in processing_url.iter().enumerate() {
         header!("Step {} / {}", index + 1, processing_url.len());
         info!("Process: {}", x.url);
-        process_part1::start(&x.url, &path.exe_path.parent().unwrap(), &path.tmp_dl, &path.u_block_path, &path.ffmpeg_path, thread, &new_args, ).await?;
+        process_part1::start(&x.url, &path, thread, &new_args, ).await?;
     }
 
     kill_chrome(child)?;

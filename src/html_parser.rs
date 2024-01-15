@@ -3,37 +3,32 @@ use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 
+use m3u8_rs::Playlist;
 use reqwest::{Client, StatusCode};
 use thirtyfour::{By, WebDriver};
-use m3u8_rs::Playlist;
 
-use crate::{debug, error, info, utils_data, web, warn};
+use crate::{debug, error, info, utils_data, warn, web};
+use crate::cmd_line_parser::Args;
+use crate::utils_check::AllPath;
 
-pub async fn recursive_find_url(
-    driver: &WebDriver,
-    _url_test: &str,
-    base_url: &str,
-    debug: &bool,
-    client: &Client,
-    tmp_dl: &PathBuf,
-) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str, args: &Args, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];
 
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
         all_l.push(_url_test.replace(base_url, ""));
-        let video_url = get_video_url(&driver, debug, all_l, base_url, client, tmp_dl).await?;
+        let video_url = get_video_url(&driver, args, all_l, base_url, client, path).await?;
         return Ok(video_url);
     }
 
     let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
 
     if n.len() == 0 {
-        all_l.extend(get_all_link_base(&driver, debug).await?);
+        all_l.extend(get_all_link_base(&driver, args).await?);
     }
 
     while n.len() != 0 {
-        all_l.extend(get_all_link_base(&driver, debug).await?);
+        all_l.extend(get_all_link_base(&driver, args).await?);
         let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
         if !n
             .first()
@@ -55,7 +50,7 @@ pub async fn recursive_find_url(
         }
     }
 
-    let video_url = get_video_url(&driver, debug, all_l, base_url, client, tmp_dl).await?;
+    let video_url = get_video_url(&driver, args, all_l, base_url, client, path).await?;
     Ok(video_url)
 }
 
@@ -73,10 +68,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
     path
 }
 
-pub async fn get_all_link_base(
-    driver: &WebDriver,
-    debug: &bool,
-) -> Result<Vec<String>, Box<dyn Error>> {
+pub async fn get_all_link_base(driver: &WebDriver, args: &Args, ) -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -86,7 +78,7 @@ pub async fn get_all_link_base(
 
     for x in play_class {
         if let Some(url) = x.attr("href").await? {
-            if *debug {
+            if args.debug {
                 debug!("get_all_link_base: {url}")
             }
             url_found.push(url)
@@ -95,14 +87,7 @@ pub async fn get_all_link_base(
     Ok(url_found)
 }
 
-pub async fn get_video_url(
-    driver: &WebDriver,
-    debug: &bool,
-    all_l: Vec<String>,
-    base_url: &str,
-    client: &Client,
-    tmp_dl: &PathBuf,
-) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn get_video_url(driver: &WebDriver, args: &Args, all_l: Vec<String>, base_url: &str, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
     for fuse_iframe in all_l {
@@ -151,9 +136,9 @@ pub async fn get_video_url(
                                 fetch_url(
                                     url,
                                     &name.trim().replace(":", "").replace(" ", "_"),
-                                    &tmp_dl,
+                                    &path.tmp_dl,
                                     &client,
-                                    debug,
+                                    args,
                                 )
                                     .await?;
 
@@ -175,13 +160,7 @@ pub async fn get_video_url(
     Ok((nb_found, nb_error))
 }
 
-pub async fn fetch_url(
-    url: &str,
-    file_name: &str,
-    tmp_dl: &PathBuf,
-    client: &Client,
-    debug: &bool,
-) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_url(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args, ) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await;
     let mut good_url = String::new();
     match body {
@@ -192,7 +171,7 @@ pub async fn fetch_url(
                     let parsed = m3u8_rs::parse_playlist_res(split);
                     match parsed {
                         Ok(Playlist::MasterPlaylist(pl)) => {
-                            if *debug{
+                            if args.debug{
                                 debug!("MasterPlaylist {:#?}", pl);
                             }
                             for ele in pl.variants {
@@ -203,7 +182,7 @@ pub async fn fetch_url(
                                         StatusCode::OK => {
                                             info!("Download as {}p", resolution);
                                             good_url = ele.uri;
-                                            if *debug {
+                                            if args.debug {
                                                 debug!("url .m3u8 {}", good_url);
                                             }
                                             break;
@@ -224,7 +203,7 @@ pub async fn fetch_url(
                     File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
                         .expect("failed to create file");
 
-                if *debug {
+                if args.debug {
                     debug!("create .m3u8 for {}", file_name);
                 }
 
@@ -237,7 +216,7 @@ pub async fn fetch_url(
                     &mut out,
                 )
                     .expect("Error copy");
-                if *debug {
+                if args.debug {
                     debug!("write .m3u8 for {}", file_name);
                 }
             }

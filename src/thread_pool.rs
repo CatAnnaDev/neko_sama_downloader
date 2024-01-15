@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::thread;
 
 use crossbeam::queue::ArrayQueue;
+
 use crate::cmd_line_parser::Args;
 use crate::warn;
 
@@ -28,17 +29,13 @@ pub enum Job {
 }
 
 impl ThreadPool {
-    pub fn new(size: usize, capa: usize) -> ThreadPool {
-        assert!(size > 0);
-
+    pub fn new(mut size: usize, capa: usize) -> ThreadPool {
+        if size <= 0{ size = 1 }
         let queue = Arc::new(ArrayQueue::<Job>::new(capa));
-
         let mut workers = Vec::with_capacity(size);
-
         for _ in 0..size {
             workers.push(Worker::new(Arc::clone(&queue)));
         }
-
         ThreadPool { workers, queue }
     }
 

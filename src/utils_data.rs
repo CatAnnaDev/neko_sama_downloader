@@ -1,5 +1,5 @@
-use std::error::Error;
 use std::{env, fs};
+use std::error::Error;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use regex::Regex;
 use requestty::Answer;
+
 use crate::cmd_line_parser::Args;
 use crate::Scan;
 

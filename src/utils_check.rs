@@ -150,10 +150,7 @@ pub async fn download(url: &str, destination: &PathBuf) -> Result<(), Box<dyn Er
     Ok(())
 }
 
-fn _pick_season_list(
-    input: &str,
-    processing_url: Vec<ProcessingUrl>,
-) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+fn _pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>, ) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let numbers: Vec<usize> = input
         .split(|c: char| !c.is_digit(10))
         .filter_map(|s| s.parse().ok())
