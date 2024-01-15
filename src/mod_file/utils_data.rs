@@ -35,6 +35,13 @@ pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     Ok(requestty::prompt_one(question)?)
 }
 
+pub fn ask_keyword(question: &str) -> Result<Answer, Box<dyn Error>> {
+    let question = requestty::Question::input("anonymous")
+        .message(question)
+        .build();
+    Ok(requestty::prompt_one(question)?)
+}
+
 pub fn _kill_process() -> Result<(), Box<dyn Error>> {
     #[cfg(target_os = "windows")]
         let _ = Command::new("taskkill")

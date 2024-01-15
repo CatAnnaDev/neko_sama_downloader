@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if new_args.url_or_search_word.is_empty() {
         warn!("prefers use ./{} -h", utils_data::exe_name());
-        if let Ok(reply) = utils_data::ask_something("Enter url to direct download or keyword to search: ") {
+        if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ") {
             new_args.url_or_search_word = reply.as_string().unwrap().trim().to_string();
         }
     }
