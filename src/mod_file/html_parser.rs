@@ -7,9 +7,7 @@ use m3u8_rs::Playlist;
 use reqwest::{Client, StatusCode};
 use thirtyfour::{By, WebDriver};
 
-use crate::{debug, error, info, utils_data, warn, web};
-use crate::cmd_line_parser::Args;
-use crate::utils_check::AllPath;
+use crate::{debug, error, info, mod_file::cmd_line_parser::Args, mod_file::utils_check::AllPath, mod_file::utils_data, mod_file::web, warn};
 
 pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, base_url: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];

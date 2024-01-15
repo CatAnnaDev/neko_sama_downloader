@@ -4,8 +4,7 @@ use std::thread;
 
 use crossbeam::queue::ArrayQueue;
 
-use crate::cmd_line_parser::Args;
-use crate::warn;
+use crate::{mod_file::cmd_line_parser::Args, warn};
 
 pub fn max_thread_check(new_args: &Args) -> Result<usize, Box<dyn Error>> {
     let mut thread = new_args.thread as usize;

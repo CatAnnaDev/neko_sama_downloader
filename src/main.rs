@@ -8,22 +8,11 @@ use std::time::Duration;
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 
-use chrome_spawn::{kill_chrome, spawn_chrome};
+use mod_file::chrome_spawn::{kill_chrome, spawn_chrome};
 
-use crate::search::ProcessingUrl;
+use crate::mod_file::search::ProcessingUrl;
 
-mod chrome_spawn;
-mod cmd_line_parser;
-mod html_parser;
-mod log_color;
-mod process_part1;
-mod search;
-mod static_data;
-mod thread_pool;
-mod utils_check;
-mod utils_data;
-mod vlc_playlist_builder;
-mod web;
+mod mod_file;
 
 enum Scan<'a> {
     Download(&'a str),

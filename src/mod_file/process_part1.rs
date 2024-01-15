@@ -9,12 +9,25 @@ use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
-use crate::{debug, error, html_parser, info, utils_data, vlc_playlist_builder, warn, web};
-use crate::cmd_line_parser::Args;
-use crate::html_parser::get_base_name_direct_url;
-use crate::thread_pool::ThreadPool;
-use crate::utils_check::AllPath;
-use crate::utils_data::ask_something;
+use crate::{
+    debug,
+    error,
+    info,
+    mod_file::{
+        html_parser,
+        html_parser::get_base_name_direct_url
+    },
+    mod_file::{
+        utils_data,
+        utils_data::ask_something
+    },
+    mod_file::cmd_line_parser::Args,
+    mod_file::thread_pool::ThreadPool,
+    mod_file::utils_check::AllPath,
+    mod_file::vlc_playlist_builder,
+    mod_file::web,
+    warn,
+};
 
 pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
