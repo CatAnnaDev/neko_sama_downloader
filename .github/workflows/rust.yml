@@ -45,7 +45,7 @@ jobs:
     needs: test
     runs-on: ${{ matrix.OS }}
     env:
-      NAME: anime_dl # change with the name of your project
+      NAME: neko_dl # change with the name of your project
       TARGET: ${{ matrix.TARGET }}
       OS: ${{ matrix.OS }}
     steps:
