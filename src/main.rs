@@ -6,7 +6,8 @@ use std::{error::Error, time::Instant, time::Duration};
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 mod mod_file;
-use mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, chrome_spawn::{kill_chrome, spawn_chrome}, process_part1::{add_ublock, connect_to_chrome_driver}};
+use mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, process_part1::{add_ublock, connect_to_chrome_driver}};
+use crate::mod_file::chrome_spawn::ChromeChild;
 
 enum Scan<'a> {
     Download(&'a str),
@@ -77,7 +78,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let global_time = Instant::now();
     if new_args.debug { debug!("spawn chrome process"); }
 
-    let child = spawn_chrome(&path.chrome_path)?;
+    let mut child = ChromeChild::spawn(&path.chrome_path);
     if new_args.debug { debug!("wait 1sec chrome process spawn correctly"); }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
@@ -88,7 +89,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         process_part1::start(&x.url, &path, thread, &new_args, driver).await?;
     }
 
-    kill_chrome(child)?;
+    child.chrome.kill()?;
+
     info!("Global time: {}",utils_data::time_to_human_time(global_time));
     Ok(())
 }
