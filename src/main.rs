@@ -6,7 +6,7 @@ use std::{error::Error, time::Instant, time::Duration};
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
 mod mod_file;
-use mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, chrome_spawn::{kill_chrome, spawn_chrome}};
+use mod_file::{cmd_line_parser, process_part1, {search, search::ProcessingUrl}, static_data, thread_pool, utils_check, utils_data, chrome_spawn::{kill_chrome, spawn_chrome}, process_part1::{add_ublock, connect_to_chrome_driver}};
 
 enum Scan<'a> {
     Download(&'a str),
@@ -84,7 +84,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     for (index, x) in processing_url.iter().enumerate() {
         header!("Step {} / {}", index + 1, processing_url.len());
         info!("Process: {}", x.url);
-        process_part1::start(&x.url, &path, thread, &new_args).await?;
+        let driver = connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
+        process_part1::start(&x.url, &path, thread, &new_args, driver).await?;
     }
 
     kill_chrome(child)?;

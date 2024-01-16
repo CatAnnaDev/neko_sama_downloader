@@ -20,13 +20,11 @@ use crate::mod_file::{
     web,
 };
 
-pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args) -> Result<(), Box<dyn Error>> {
+pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, driver: WebDriver) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
     let before = Instant::now();
-    let base_url = "https://neko-sama.fr";
-    let prefs = add_ublock(args, path)?;
-    let driver = connect_to_chrome_driver(args, prefs, url_test).await?;
-    let (save_path, good, error) = scan_main(&driver, url_test, base_url, path, &client, args).await?;
+
+    let (save_path, good, error) = scan_main(&driver, url_test, path, &client, args).await?;
 
     prevent_case_nothing_found_or_error(good, error, args);
 
@@ -37,9 +35,9 @@ pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Arg
         thread = good as usize;
     }
 
-    let (mut m3u8_path_folder, save_path_vlc) = build_m3u8_folder_path(path, save_path)?;
+    let (mut vec_m3u8_path_folder, vec_save_path_vlc) = build_vec_m3u8_folder_path(path, save_path)?;
 
-    utils_data::custom_sort(&mut m3u8_path_folder);
+    utils_data::custom_sort(&mut vec_m3u8_path_folder);
 
     info!("Start Processing with {} threads", thread);
 
@@ -54,7 +52,7 @@ pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Arg
 
     let (tx, rx) = mpsc::channel();
     let mut pool = ThreadPool::new(thread, good as usize);
-    for (output_path, name) in m3u8_path_folder {
+    for (output_path, name) in vec_m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = path.ffmpeg_path.clone();
         let debug = args.debug.clone();
@@ -77,7 +75,7 @@ pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Arg
 
     progress_bar.finish();
 
-    build_vlc(good, args, save_path_vlc)?;
+    build_vlc_playlist(good, args, vec_save_path_vlc)?;
 
     end_print(before, path, good, error);
 
@@ -110,14 +108,14 @@ pub async fn connect_to_chrome_driver(args: &Args, prefs: ChromeCapabilities, ur
     Ok(driver)
 }
 
-pub async fn scan_main(driver: &WebDriver, url_test: &str, base_url: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(String, u16, u16), Box<dyn Error>>{
+pub async fn scan_main(driver: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(String, u16, u16), Box<dyn Error>>{
     info!("Scan Main Page");
     let mut save_path = String::new();
-    let (good, error) = scan_main_page(
+
+    let (good, error) = build_path_to_save_final_video(
         &mut save_path,
         &driver,
         url_test,
-        base_url,
         path,
         &client,
         &args,
@@ -161,7 +159,7 @@ pub async fn shutdown_chrome(args: &Args, driver: &WebDriver){
     }
 }
 
-pub fn build_m3u8_folder_path(path: &AllPath, save_path: String) -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>>{
+pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String) -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>>{
     let mut save_path_vlc = vec![];
 
     let m3u8_path_folder: Vec<_> = fs::read_dir(&path.tmp_dl)?
@@ -195,11 +193,11 @@ pub fn build_m3u8_folder_path(path: &AllPath, save_path: String) -> Result<(Vec<
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
-pub async fn scan_main_page(save_path: &mut String, drivers: &WebDriver, url_test: &str, base_url: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
     fs::create_dir_all(&path.tmp_dl)?;
 
-    let mut _path = check_url_type(url_test, args, &drivers).await?;
-    save_path.push_str(_path.as_str());
+    let mut _name = get_name_based_on_url(url_test, args, &drivers).await?;
+    save_path.push_str(_name.as_str());
 
     let season_path = path.tmp_dl.parent().unwrap().join(save_path);
     if args.ignore_alert_missing_episode {
@@ -218,40 +216,30 @@ pub async fn scan_main_page(save_path: &mut String, drivers: &WebDriver, url_tes
 
     fs::create_dir_all(season_path)?;
     Ok(
-        html_parser::recursive_find_url(&drivers, url_test, base_url, args, &client, path)
+        html_parser::recursive_find_url(&drivers, url_test, args, &client, path)
             .await?,
     )
 }
 
-pub async fn check_url_type(url_test: &str, args: &Args, drivers: &WebDriver) -> Result<String, Box<dyn Error>>{
+pub async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver) -> Result<String, Box<dyn Error>>{
     let _path = if !url_test.contains("/episode/") {
         format!(
             "Anime_Download/{}/{}",
             args.language.to_uppercase(),
-            &utils_data::edit_for_windows_compatibility(
-                &drivers
-                    .title()
-                    .await?
-                    .replace(" - Neko Sama", "")
-                    .replace(" ", "_")
-            )
+            &utils_data::edit_for_windows_compatibility(&drivers.title().await?.replace(" - Neko Sama", "").replace(" ", "_"))
         )
     } else {
         format!(
             "Anime_Download/{}/{}",
             args.language.to_uppercase(),
             &utils_data::edit_for_windows_compatibility(
-                &get_base_name_direct_url(&drivers)
-                    .await
-                    .replace(" - Neko Sama", "")
-                    .replace(" ", "_")
-            )
+                &get_base_name_direct_url(&drivers).await.replace(" - Neko Sama", "").replace(" ", "_"))
         )
     };
     Ok(_path)
 }
 
-fn build_vlc(good: u16, args: &Args,mut save_path_vlc: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
+fn build_vlc_playlist(good: u16, args: &Args, mut save_path_vlc: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
     if good >= 2 && args.vlc_playlist {
         info!("Build vlc playlist");
         utils_data::custom_sort_vlc(&mut save_path_vlc);

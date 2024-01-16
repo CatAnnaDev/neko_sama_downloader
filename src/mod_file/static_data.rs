@@ -1,3 +1,5 @@
+pub const BASE_URL: &str = "https://neko-sama.fr";
+
 // chrome driver
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]

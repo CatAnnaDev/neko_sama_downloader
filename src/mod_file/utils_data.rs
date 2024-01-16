@@ -1,4 +1,4 @@
-use std::{env, fs, error::Error, ffi::OsStr, path::{Path, PathBuf}, process::{Command, Stdio}, time::Instant};
+use std::{env, fs, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Instant};
 use regex::Regex;
 use requestty::Answer;
 use crate::{mod_file::cmd_line_parser::Args, Scan};
@@ -32,21 +32,6 @@ pub fn ask_keyword(question: &str) -> Result<Answer, Box<dyn Error>> {
         .message(question)
         .build();
     Ok(requestty::prompt_one(question)?)
-}
-
-pub fn _kill_process() -> Result<(), Box<dyn Error>> {
-    #[cfg(target_os = "windows")]
-        let _ = Command::new("taskkill")
-        .args(["/t", "/f", "/im", "chromedriver.exe"])
-        .stdout(Stdio::null())
-        .spawn()?;
-
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-        let _ = Command::new("killall")
-        .arg("\"chromedriver\"")
-        .stdout(Stdio::null())
-        .spawn()?;
-    Ok(())
 }
 
 pub fn time_to_human_time(time: Instant) -> String {
