@@ -29,7 +29,7 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args
     Ok(video_url)
 }
 
-pub async fn next_page(driver : &WebDriver, args: &Args, n: &Vec<WebElement>) -> Result<Vec<String>, Box<dyn Error>> {
+async fn next_page(driver : &WebDriver, args: &Args, n: &Vec<WebElement>) -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_links = vec![];
     while n.len() != 0 {
         all_links.extend(get_all_link_base_href(&driver, args).await?);
@@ -71,7 +71,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
     path
 }
 
-pub async fn get_all_link_base_href(driver: &WebDriver, args: &Args) -> Result<Vec<String>, Box<dyn Error>> {
+async fn get_all_link_base_href(driver: &WebDriver, args: &Args) -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -90,7 +90,7 @@ pub async fn get_all_link_base_href(driver: &WebDriver, args: &Args) -> Result<V
     Ok(url_found)
 }
 
-pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
+async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
 
@@ -130,7 +130,7 @@ pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: 
     Ok((nb_found, nb_error))
 }
 
-pub async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>>{
+async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>>{
     let name = utils_data::edit_for_windows_compatibility(&driver.title().await?.replace(" - Neko Sama", ""), );
     match driver.handle.execute(r#"return jwplayer().getPlaylistItem();"#, vec![]).await {
         Ok(script) => {
@@ -161,7 +161,7 @@ pub async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &We
     Ok((nb_found, nb_error))
 }
 
-pub async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args) -> Result<(), Box<dyn Error>> {
+async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args) -> Result<(), Box<dyn Error>> {
     let body = web::web_request(&client, &url).await;
 
     match body {
@@ -190,7 +190,7 @@ pub async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf
     Ok(())
 }
 
-pub async fn test_resolution(parsed: Result<Playlist, nom::Err<nom::error::Error<&[u8]>>>, args: &Args, client: &Client) -> String {
+async fn test_resolution(parsed: Result<Playlist, nom::Err<nom::error::Error<&[u8]>>>, args: &Args, client: &Client) -> String {
     let mut _good_url = String::new();
     match parsed {
         Ok(Playlist::MasterPlaylist(pl)) => {

@@ -18,7 +18,7 @@ pub struct ThreadPool {
     queue: Arc<ArrayQueue<Job>>,
 }
 
-pub enum Job {
+enum Job {
     Task(Box<dyn FnOnce() + Send + 'static>),
     Terminate,
 }
