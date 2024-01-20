@@ -10,8 +10,8 @@
 - on créer le dossier tmp pour save les m3u8 après
 - on fait un get_name_based_on_url pour chopper le bon nom pour save après
 - si le dossier de save via le nom existe déjà on previens le user
-- on vien scanner la main page
 - on check si on est en direct url ou non
+- on vien scanner la main page
 
 - # Le direct url
 - on va sur la page direct avec le driver
@@ -25,22 +25,29 @@
 
 
 - # final Process
-- on entre dans l'iframe de jwplayer pour executé le js et sortir l'url du .m3u8
-- on télécharge et save le m3u8 dans le dossier tmp
+- on iter sur chaque url du vec pour chopper le nom de l'épisode et rejoin l'ifamre après
+- on entre dans l'iframe de jwplayer pour executé le js et sortir l'url Master du .m3u8
 - on créer le dossier spécifique a la saison, Anime Download/La Langue/Le nom
-- au moment de save le .m3u8 on le test pour savoir quelle url prendre dedans et indiqué a l'utilisateur les qualité vidéo dispo
-- on commence pas la meilleur si elle marche on la garde sinon on le notifie et on test celle d'après etc
+- au moment de save le .m3u8 on le test pour savoir quelle url prendre dedans et indiqué a l'utilisateur les qualité vidéos dispo
+- on commence par la meilleur si elle marche on la garde sinon on le notifie et on test celle d'après etc
 - et la on parse et save le bon m3u8 avec tous les liens de chaque .ts 
-- on demande si l'utilisateur veux continuer le download avec un ou plusieurs épisode manquant ( s'il en manque au moins 1 )
+- on demande a l'utilisateur s'il veux continuer le download avec un ou plusieurs épisode manquant ( s'il en manque au moins 1 )
 - on shutdown chromedriver qui ne sert plus a rien ici
 - on fait une verif sur le nombre de thread demander par le user que ça ne dépasse pas les capacité de sont cpu ou qu'on en spawn pas trop au vue du nombre d'épisode a download
 - ici on iter sur le dossier tmp pour chopper toutes les paths vers les .m3u8, en plus de garder le path pour build la playlist vlc 
-- on applique un sort sur le vec de path pour dl dans l'ordre pour les petit co au cas où
+- on applique un sort sur le vec de path pour dl dans l'ordre pour les petites co au cas où
 - on affiche la progress bar 
-- on créer la threadpool et N thread pour start des process de ffmpeg pour download et save les vidéos en .mp4 dans le dossier spécifier
-- uns fois tout télécharger donc viens faire la playlist vlc si on trouve au minima 2 episode
+- on créer la threadpool avec N thread pour start des process de ffmpeg pour download et save les vidéos au format .mp4 dans le dossier spécifier
+- une fois tout télécharger on viens faire la playlist vlc si on trouve au minima 2 episode
 - on print le récap final du process
 
 # Fin
 - on print le temps global pris par l'app
 - on re-kill chrome au cas où 
+
+# Note
+- avoir plus de 20 thread même avec une bonne co ne sert à rien
+- le site limite la co de base en plus que pour chaque vidéo télécharger en réaliter c'est en moyenne 700~ mini vidéo ( la vidéo est en chunk c'est normal )
+- ffmpeg arrive a timeout avec 20 thread parce qu'on spam trop le site donc on perd du temps au final même si ffmpeg gère le cas des timeout est arrive a chopper la vidéo
+- on y gagne rien a en spawn plus que 20 limite on perd du temps
+- ceci peux être vérifier si vous lancer un dl avec -v en cli 
