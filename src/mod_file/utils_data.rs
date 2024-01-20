@@ -1,10 +1,22 @@
-use std::{env, fs, error::Error, ffi::OsStr, path::{Path, PathBuf}, time::Instant};
+use std::{
+    env,
+    error::Error,
+    ffi::OsStr,
+    fs,
+    path::{Path, PathBuf},
+    time::Instant,
+};
+
 use regex::Regex;
 use requestty::Answer;
+
 use crate::{mod_file::cmd_line_parser::Args, Scan};
 
 pub fn search_download(new_args: &Args) -> Scan {
-    if new_args.url_or_search_word.starts_with("https://neko-sama.fr/") {
+    if new_args
+        .url_or_search_word
+        .starts_with("https://neko-sama.fr/")
+    {
         Scan::Download(&new_args.url_or_search_word)
     } else {
         Scan::Search(&new_args.url_or_search_word)
@@ -12,12 +24,14 @@ pub fn search_download(new_args: &Args) -> Scan {
 }
 
 pub fn exe_name() -> String {
-    env::args().next()
+    env::args()
+        .next()
         .as_ref()
         .map(Path::new)
         .and_then(Path::file_name)
         .and_then(OsStr::to_str)
-        .map(String::from).expect("Can't find executable name")
+        .map(String::from)
+        .expect("Can't find executable name")
 }
 
 pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {

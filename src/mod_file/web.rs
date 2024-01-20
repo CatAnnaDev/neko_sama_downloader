@@ -1,5 +1,11 @@
-use std::{path::PathBuf, process::{Command, Stdio},time::Instant};
+use std::{
+    path::PathBuf,
+    process::{Command, Stdio},
+    time::Instant,
+};
+
 use reqwest::{Client, Response};
+
 use crate::{debug, warn};
 
 pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &bool) -> i16 {
@@ -9,11 +15,16 @@ pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &b
     let time = Instant::now();
     let mut process = Command::new(_ffmpeg);
     let args = [
-        "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
-        "-i", path,
-        "-bsf:a", "aac_adtstoasc",
-        "-c:v", "copy",
-        "-c:a", "copy",
+        "-protocol_whitelist",
+        "file,http,https,tcp,tls,crypto",
+        "-i",
+        path,
+        "-bsf:a",
+        "aac_adtstoasc",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "copy",
         &name,
     ];
     if *debug {

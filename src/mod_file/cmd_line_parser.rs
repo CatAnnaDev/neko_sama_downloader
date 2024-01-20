@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+
 use clap::{ArgAction, Parser};
 
 #[derive(Parser, Debug)]
@@ -62,7 +63,9 @@ pub struct Args {
 
 impl Display for Args {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Config:\n\
+        write!(
+            f,
+            "Config:\n\
                   Url or Search:\t{}\n\
                   Language:\t{}\n\
                   Threads:\t{}\n\
@@ -70,13 +73,13 @@ impl Display for Args {
                   Show Alert:\t{}\n\
                   Minimized:\t{}\n\
                   Debug:\t\t{}",
-               self.url_or_search_word,
-               self.language,
-               self.thread,
-               self.vlc_playlist,
-               self.ignore_alert_missing_episode,
-               self.minimized_chrome,
-               self.debug,
+            self.url_or_search_word,
+            self.language,
+            self.thread,
+            self.vlc_playlist,
+            self.ignore_alert_missing_episode,
+            self.minimized_chrome,
+            self.debug,
         )
     }
 }

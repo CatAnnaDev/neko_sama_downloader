@@ -1,6 +1,17 @@
-use std::{env, {fs, fs::File}, error::Error, io::Write, path::PathBuf, process::exit};
+use std::{
+    {fs, fs::File},
+    env,
+    error::Error,
+    io::Write,
+    path::PathBuf,
+    process::exit,
+};
+
 use reqwest::Client;
-use crate::{error, info, mod_file::search::ProcessingUrl, mod_file::static_data, mod_file::utils_data};
+
+use crate::{
+    error, info, mod_file::search::ProcessingUrl, mod_file::static_data, mod_file::utils_data,
+};
 
 #[derive(Clone)]
 pub struct AllPath {
@@ -91,13 +102,13 @@ pub async fn confirm() -> Result<AllPath, Box<dyn Error>> {
     }
 
     if !ublock_check {
-        download(static_data::UBLOCK_PATH, &path.ublock_destination).await.expect("Erreur lors du téléchargement de uBlock Origin.");
+        download(static_data::UBLOCK_PATH, &path.ublock_destination)
+            .await
+            .expect("Erreur lors du téléchargement de uBlock Origin.");
     }
 
     match ffmpeg_check && chrome_check && ublock_check {
-        true => {
-            Ok(path)
-        }
+        true => Ok(path),
         false => {
             if !ffmpeg_check && chrome_check {
                 error!(
@@ -140,14 +151,16 @@ pub async fn download(url: &str, destination: &PathBuf) -> Result<(), Box<dyn Er
     Ok(())
 }
 
-fn _pick_season_list(input: &str, processing_url: Vec<ProcessingUrl>) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+fn _pick_season_list(
+    input: &str,
+    processing_url: Vec<ProcessingUrl>,
+) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let numbers: Vec<usize> = input
         .split(|c: char| !c.is_digit(10))
         .filter_map(|s| s.parse().ok())
         .collect();
     Ok(numbers
         .iter()
-        .filter_map(|&number| processing_url.get(number - 1)
-            .map(|url| url.clone()))
+        .filter_map(|&number| processing_url.get(number - 1).map(|url| url.clone()))
         .collect())
 }

@@ -1,4 +1,5 @@
 use std::{error::Error, process::exit, time::Duration};
+
 use reqwest::Client;
 use serde_derive::{Deserialize, Serialize};
 use tokio::time;
@@ -13,7 +14,11 @@ pub struct ProcessingUrl {
     pub genre: String,
 }
 
-pub async fn search_over_json(name: &str, lang: &str, debug: &bool) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+pub async fn search_over_json(
+    name: &str,
+    lang: &str,
+    debug: &bool,
+) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let mut edit_lang = lang.to_lowercase();
     if edit_lang != "vf".to_string() && edit_lang != "vostfr".to_string() {
         warn!("\"{edit_lang}\" doesn't exist, replaced by \"vf\" automatically, use only \"vf\" or \"vostfr\"");

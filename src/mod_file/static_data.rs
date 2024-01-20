@@ -25,8 +25,7 @@ pub const UBLOCK_PATH: &str =
 
 // ffmpeg
 #[cfg(target_os = "windows")]
-pub const FFMPEG_PATH: &str =
-    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+pub const FFMPEG_PATH: &str = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
@@ -41,7 +40,6 @@ pub const FFMPEG_PATH: &str =
     "static build: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz\n
     arch linux, other: sudo pacman -S ffmpeg\n
     ubuntu, debian, other: sudo apt install ffmpeg";
-
 
 pub const HEADER: &str = r#"
   _   _      _                   _ _

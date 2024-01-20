@@ -1,5 +1,7 @@
 use std::{error::Error, sync::Arc, thread};
+
 use crossbeam::queue::ArrayQueue;
+
 use crate::{mod_file::cmd_line_parser::Args, warn};
 
 pub fn max_thread_check(new_args: &Args) -> Result<usize, Box<dyn Error>> {
@@ -25,7 +27,9 @@ enum Job {
 
 impl ThreadPool {
     pub fn new(mut size: usize, capa: usize) -> ThreadPool {
-        if size <= 0 { size = 1 }
+        if size <= 0 {
+            size = 1
+        }
         let queue = Arc::new(ArrayQueue::<Job>::new(capa));
         let mut workers = Vec::with_capacity(size);
         for _ in 0..size {
