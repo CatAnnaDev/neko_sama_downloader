@@ -1,9 +1,9 @@
 # Start
 - Setup args donner en cli + verification de leurs état 
-- lancement de la recherche ou di direct download basé sur le -s en cli ou se qui est mis au moment de la question
+- lancement de la recherche ou du direct download basé sur le -s en cli ou se qui est mis au moment de la question
 - verification des paths pour ffmpeg ( mac linux ) installer dans l'OS et windows télécharger et mis dans le dossier utils
-- on iter sur le ou les urls spécifier au moment de la recherche ou même di direct url 
-- on start le chrome driver et on se co dessus en local host port 6969
+- on iter sur le ou les urls spécifier au moment de la recherche ou même du direct url 
+- on start le chrome driver et on se co dessus en localhost port 6969
 
 # Process
 - # La Base
