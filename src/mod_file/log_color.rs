@@ -34,3 +34,12 @@ macro_rules! header {
         eprintln!("\x1b[35m{}\x1B[0m", format_args!($($arg)*))
     };
 }
+
+#[macro_export]
+macro_rules! time_it {
+    ($context:literal, $s:block) => {
+        let timer = std::time::Instant::now();
+        $s
+        info!("{}: {}", $context, time_to_human_time(timer));
+    };
+}

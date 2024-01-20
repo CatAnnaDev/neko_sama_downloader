@@ -3,12 +3,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
-use crate::{
-    debug,
-    error,
-    info,
-    warn,
-};
+use crate::{debug, error, info, warn};
 
 use crate::mod_file::{
     {html_parser, html_parser::get_base_name_direct_url},
@@ -249,14 +244,7 @@ fn build_vlc_playlist(good: u16, args: &Args, mut save_path_vlc: Vec<(PathBuf, S
 }
 
 pub fn end_print(before: Instant, path: &AllPath, good: u16, error: u16){
-    let seconds = before.elapsed().as_secs() % 60;
-    let minutes = (before.elapsed().as_secs() / 60) % 60;
-    let hours = (before.elapsed().as_secs() / 60) / 60;
-
-    let time = format!("{:02}:{:02}:{:02}", hours, minutes, seconds);
-
     info!("Clean tmp dir!");
     utils_data::remove_dir_contents(&path.tmp_dl);
-
-    info!("Done in: {} for {} episodes and {} error",time, good, error);
+    info!("Done in: {} for {} episodes and {} error", utils_data::time_to_human_time(before), good, error);
 }
