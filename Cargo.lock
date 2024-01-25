@@ -804,6 +804,7 @@ dependencies = [
  "crossbeam",
  "crossbeam-channel",
  "ctrlc",
+ "http 0.2.11",
  "indicatif",
  "m3u8-rs",
  "nom",

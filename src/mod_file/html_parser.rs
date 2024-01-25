@@ -9,7 +9,7 @@ use crate::mod_file::{
     cmd_line_parser::Args, static_data::BASE_URL, utils_check::AllPath, utils_data, web,
 };
 
-pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut all_l = vec![];
 
     // direct url
@@ -31,12 +31,12 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args
     // iter over all page possible
     let page_return = next_page(&driver, args, &n).await?;
     all_l.extend(page_return);
-    
+
     let video_url = enter_iframe_wait_jwplayer(&driver, args, all_l, client, path).await?;
     Ok(video_url)
 }
 
-async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, ) -> Result<Vec<String>, Box<dyn Error>> {
+async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>) -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_links = vec![];
     while n.len() != 0 {
         all_links.extend(get_all_link_base_href(&driver, args).await?);
@@ -71,6 +71,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
         ))
         .await
         .expect("Can't get real name direct url");
+
     let path = class
         .inner_html()
         .await
@@ -78,7 +79,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
     path
 }
 
-async fn get_all_link_base_href(driver: &WebDriver, args: &Args, ) -> Result<Vec<String>, Box<dyn Error>> {
+async fn get_all_link_base_href(driver: &WebDriver, args: &Args) -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -97,7 +98,7 @@ async fn get_all_link_base_href(driver: &WebDriver, args: &Args, ) -> Result<Vec
     Ok(url_found)
 }
 
-async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath, ) -> Result<(u16, u16), Box<dyn Error>> {
+async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
     let mut nb_found = 0u16;
     let mut nb_error = 0u16;
 
@@ -138,7 +139,7 @@ async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args, ) -> Result<(u16, u16), Box<dyn Error>> {
+async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
     let name = utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
     );
@@ -176,10 +177,8 @@ async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDri
     Ok((nb_found, nb_error))
 }
 
-async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args, ) -> Result<(), Box<dyn Error>> {
-    let body = web::web_request(&client, &url).await;
-
-    match body {
+async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf, client: &Client, args: &Args) -> Result<(), Box<dyn Error>> {
+    match web::web_request(&client, &url).await {
         Ok(body) => match body.status() {
             StatusCode::OK => {
                 let await_response = body.text().await?;
@@ -219,7 +218,7 @@ async fn download_and_save_m3u8(url: &str, file_name: &str, tmp_dl: &PathBuf, cl
     Ok(())
 }
 
-async fn test_resolution(parsed: Result<Playlist, nom::Err<nom::error::Error<&[u8]>>>, args: &Args, client: &Client, ) -> String {
+async fn test_resolution(parsed: Result<Playlist, nom::Err<nom::error::Error<&[u8]>>>, args: &Args, client: &Client) -> String {
     let mut _good_url = String::new();
     match parsed {
         Ok(Playlist::MasterPlaylist(pl)) => {

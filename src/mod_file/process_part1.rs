@@ -21,7 +21,7 @@ use crate::mod_file::{
     web,
 };
 
-pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, driver: WebDriver, ) -> Result<(), Box<dyn Error>> {
+pub async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, driver: WebDriver) -> Result<(), Box<dyn Error>> {
     let client = Client::builder().build()?;
     let before = Instant::now();
 
@@ -96,7 +96,7 @@ pub fn add_ublock(args: &Args, path: &AllPath) -> Result<ChromeCapabilities, Box
     Ok(prefs)
 }
 
-pub async fn connect_to_chrome_driver(args: &Args, prefs: ChromeCapabilities, url_test: &str, ) -> Result<WebDriver, Box<dyn Error>> {
+pub async fn connect_to_chrome_driver(args: &Args, prefs: ChromeCapabilities, url_test: &str) -> Result<WebDriver, Box<dyn Error>> {
     if args.debug {
         debug!("connect to chrome driver");
     }
@@ -114,7 +114,7 @@ pub async fn connect_to_chrome_driver(args: &Args, prefs: ChromeCapabilities, ur
     Ok(driver)
 }
 
-async fn scan_main(driver: &WebDriver,url_test: &str,path: &AllPath,client: &Client,args: &Args,) -> Result<(String, u16, u16), Box<dyn Error>> {
+async fn scan_main(driver: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(String, u16, u16), Box<dyn Error>> {
     info!("Scan Main Page");
     let mut save_path = String::new();
 
@@ -161,7 +161,7 @@ async fn shutdown_chrome(args: &Args, driver: &WebDriver) {
     }
 }
 
-fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, ) -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
+fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String) -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
     let mut save_path_vlc = vec![];
 
     let m3u8_path_folder: Vec<_> = fs::read_dir(&path.tmp_dl)?
@@ -198,7 +198,7 @@ fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, ) -> Result<(Ve
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
-async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args, ) -> Result<(u16, u16), Box<dyn Error>> {
+async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
     fs::create_dir_all(&path.tmp_dl)?;
 
     let mut _name = get_name_based_on_url(url_test, args, &drivers).await?;
@@ -223,7 +223,7 @@ async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDri
     Ok(html_parser::recursive_find_url(&drivers, url_test, args, &client, path).await?)
 }
 
-async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver, ) -> Result<String, Box<dyn Error>> {
+async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver) -> Result<String, Box<dyn Error>> {
     let _path = if !url_test.contains("/episode/") {
         format!(
             "Anime_Download/{}/{}",
@@ -251,7 +251,7 @@ async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver,
     Ok(_path)
 }
 
-fn build_vlc_playlist(good: u16, args: &Args, mut save_path_vlc: Vec<(PathBuf, String)>, ) -> Result<(), Box<dyn Error>> {
+fn build_vlc_playlist(good: u16, args: &Args, mut save_path_vlc: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
     if good >= 2 && args.vlc_playlist {
         info!("Build vlc playlist");
         utils_data::custom_sort_vlc(&mut save_path_vlc);

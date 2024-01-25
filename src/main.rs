@@ -1,6 +1,7 @@
 #![feature(fs_try_exists)]
 
 use std::{error::Error, time::Duration};
+use std::str::FromStr;
 
 use clap::Parser;
 use requestty::{OnEsc, prompt_one, Question};
@@ -9,17 +10,13 @@ use mod_file::{
     {search, search::ProcessingUrl},
     {utils_data, utils_data::time_to_human_time}, chrome_spawn::ChromeChild,
     cmd_line_parser,
-    process_part1, process_part1::{add_ublock, connect_to_chrome_driver}, static_data,
+    cmd_line_parser::Scan, process_part1, process_part1::{add_ublock, connect_to_chrome_driver},
+    static_data,
     thread_pool,
     utils_check,
 };
 
 mod mod_file;
-
-enum Scan<'a> {
-    Download(&'a str),
-    Search(&'a str),
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -28,20 +25,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if new_args.url_or_search_word.is_empty() {
         warn!("prefers use ./{} -h", utils_data::exe_name());
-        if let Ok(reply) =
-            utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
+        if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
-            new_args.url_or_search_word = reply.as_string().unwrap().trim().to_string();
+            new_args.url_or_search_word = Scan::from_str(reply.as_string().unwrap().trim())?;
         }
     }
 
     info!("{}", new_args);
 
     let thread = thread_pool::max_thread_check(&new_args)?;
-    let mut processing_url = vec![];
 
-    match utils_data::search_download(&new_args) {
-        Scan::Search(keyword) => {
+    let processing_url = match new_args.url_or_search_word {
+        Scan::Search(ref keyword) => {
             let find =
                 search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
 
@@ -104,18 +99,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .filter_map(|number| find.get(number.index).cloned())
                 .collect();
 
-            processing_url.extend(matching_processing_urls);
+            matching_processing_urls
         }
 
-        Scan::Download(url) => {
-            processing_url.extend(vec![ProcessingUrl {
+        Scan::Download(ref url) => {
+            vec![ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
                 url: url.to_string(),
                 genre: "".to_string(),
-            }]);
+            }]
         }
-    }
+    };
 
     let path = utils_check::confirm().await?;
 
@@ -133,8 +128,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         for (index, x) in processing_url.iter().enumerate() {
             header!("Step {} / {}", index + 1, processing_url.len());
             info!("Process: {}", x.url);
-            let driver =
-                connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
+            let driver = connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
             process_part1::start(&x.url, &path, thread, &new_args, driver).await?;
         }
 

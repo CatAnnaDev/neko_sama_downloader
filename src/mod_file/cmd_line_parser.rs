@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 use clap::{ArgAction, Parser};
 
@@ -11,7 +12,7 @@ pub struct Args {
     default_value = "",
     help = "add season url to direct download, or type anything to find all correspondent season film etc"
     )]
-    pub url_or_search_word: String,
+    pub url_or_search_word: Scan,
 
     #[arg(short = 'l', long, default_value = "vf", help = "vf or vostfr")]
     pub language: String,
@@ -61,12 +62,42 @@ pub struct Args {
     pub minimized_chrome: bool,
 }
 
+#[derive(Debug, Clone)]
+pub enum Scan {
+    Download(http::uri::Uri),
+    Search(String),
+}
+
+impl Scan {
+    pub(crate) fn is_empty(&self) -> bool {
+        match self {
+            Scan::Download(_) => { false }
+            Scan::Search(e) => { e.is_empty() }
+        }
+    }
+}
+
+impl FromStr for Scan {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Scan, String> {
+        if s.starts_with("https://neko-sama.fr") {
+            let Ok(uri) = http::uri::Uri::from_str(s) else {
+                return Err("Ill formed neko-sama uri".to_owned());
+            };
+            Ok(Scan::Download(uri))
+        } else {
+            Ok(Scan::Search(s.to_owned()))
+        }
+    }
+}
+
+
 impl Display for Args {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "Config:\n\
-                  Url or Search:\t{}\n\
+                  Url or Search:\t{:?}\n\
                   Language:\t{}\n\
                   Threads:\t{}\n\
                   Vlc playlist:\t{}\n\
