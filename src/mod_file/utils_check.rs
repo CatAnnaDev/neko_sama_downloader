@@ -61,7 +61,7 @@ pub fn check() -> Result<AllPath, Box<dyn Error>> {
     })
 }
 
-pub async fn confirm() -> Result<AllPath, Box<dyn Error>> {
+pub async fn confirm_chrome_ffmpeg_ublock_presence() -> Result<AllPath, Box<dyn Error>> {
     let path = check()?;
 
     let mut chrome_check = false;
@@ -102,9 +102,7 @@ pub async fn confirm() -> Result<AllPath, Box<dyn Error>> {
     }
 
     if !ublock_check {
-        download(static_data::UBLOCK_PATH, &path.ublock_destination)
-            .await
-            .expect("Erreur lors du téléchargement de uBlock Origin.");
+        download(static_data::UBLOCK_PATH, &path.ublock_destination).await.expect("Erreur lors du téléchargement de uBlock Origin.");
     }
 
     match ffmpeg_check && chrome_check && ublock_check {
