@@ -54,7 +54,7 @@ pub async fn search_over_json(
             let x = ProcessingUrl {
                 name: x.title,
                 ep: x.nb_eps,
-                url: format!("{}{}", base_url, x.url),
+                url: x.url,
                 genre: x.genres.join(", ").replace("c0m1dy", "comedy"),
             };
             if *debug {
