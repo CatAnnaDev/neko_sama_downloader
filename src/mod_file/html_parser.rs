@@ -6,7 +6,7 @@ use thirtyfour::{By, WebDriver, WebElement};
 
 use crate::{debug, error, info, warn};
 use crate::mod_file::{
-    cmd_line_parser::Args, static_data::BASE_URL, utils_check::AllPath, utils_data, web,
+    cmd_line_parser::Args, utils_check::AllPath, utils_data, web,
 };
 
 pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
@@ -15,7 +15,7 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args
     // direct url
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
-        all_l.push(_url_test.replace(BASE_URL, ""));
+        all_l.push(_url_test.to_string());
         let video_url = enter_iframe_wait_jwplayer(&driver, args, all_l, client, path).await?;
         return Ok(video_url);
     }
@@ -33,6 +33,7 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args
     all_l.extend(page_return);
 
     let video_url = enter_iframe_wait_jwplayer(&driver, args, all_l, client, path).await?;
+
     Ok(video_url)
 }
 
@@ -103,8 +104,7 @@ async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<
     let mut nb_error = 0u16;
 
     for fuse_iframe in all_l {
-        let url = format!("{BASE_URL}{fuse_iframe}");
-        driver.handle.goto(&url).await?;
+        driver.handle.goto(&fuse_iframe).await?;
 
         let url = driver.handle.find(By::Id("un_episode")).await?;
         // force wait after iframe update jwplayer in html

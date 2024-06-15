@@ -1,5 +1,3 @@
-pub const BASE_URL: &str = "https://neko-sama.fr";
-
 // chrome driver
 #[cfg(target_os = "macos")]
 #[cfg(target_arch = "x86_64")]
@@ -47,5 +45,5 @@ pub const HEADER: &str = r#"
  |  \| |/ _ \ |/ / _ \ _____ / _` | |
  | |\  |  __/   < (_) |_____| (_| | |
  |_| \_|\___|_|\_\___/       \__,_|_|
-                     by PsykoDev ᓚᘏᗢ
+                   by CatAnnaDev ᓚᘏᗢ
 "#;
