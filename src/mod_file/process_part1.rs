@@ -18,8 +18,7 @@ use crate::mod_file::{
     vlc_playlist_builder,
 };
 
-
-pub(crate) async fn scan_main(driver: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(String, u16, u16), Box<dyn Error>> {
+pub(crate) async fn scan_main(driver: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(String, usize, usize), Box<dyn Error>> {
     info!("Scan Main Page");
     let mut save_path = String::new();
 
@@ -32,7 +31,7 @@ pub(crate) async fn scan_main(driver: &WebDriver, url_test: &str, path: &AllPath
     Ok((save_path, good, error))
 }
 
-pub(crate) fn prevent_case_nothing_found_or_error(good: u16, error: u16, args: &Args) {
+pub(crate) fn prevent_case_nothing_found_or_error(good: usize, error: usize, args: &Args) {
     if error > 0 && args.ignore_alert_missing_episode {
         if let Ok(e) =
             ask_something("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ")
@@ -115,12 +114,10 @@ pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String) -> R
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
-pub(crate) fn build_vlc_playlist(good: u16, args: &Args, mut save_path_vlc: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
-    if good >= 2 && args.vlc_playlist {
-        info!("Build vlc playlist");
-        utils_data::custom_sort_vlc(&mut save_path_vlc);
-        vlc_playlist_builder::new(save_path_vlc)?;
-    }
+pub(crate) fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>) -> Result<(), Box<dyn Error>> {
+    info!("Build vlc playlist");
+    utils_data::custom_sort_vlc(&mut save_path_vlc);
+    vlc_playlist_builder::new(save_path_vlc)?;
     Ok(())
 }
 
@@ -143,7 +140,7 @@ pub async fn connect_to_chrome_driver(args: &Args, prefs: ChromeCapabilities, ur
     Ok(driver)
 }
 
-async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
+async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, path: &AllPath, client: &Client, args: &Args) -> Result<(usize, usize), Box<dyn Error>> {
     fs::create_dir_all(&path.tmp_dl)?;
 
     let mut _name = get_name_based_on_url(url_test, args, &drivers).await?;
@@ -196,7 +193,7 @@ async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver)
     Ok(_path)
 }
 
-pub(crate) fn end_print(before: Instant, path: &AllPath, good: u16, error: u16) {
+pub(crate) fn end_print(before: Instant, path: &AllPath, good: usize, error: usize) {
     info!("Clean tmp dir!");
     utils_data::remove_dir_contents(&path.tmp_dl);
     info!(

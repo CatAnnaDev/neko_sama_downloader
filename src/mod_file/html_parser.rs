@@ -9,7 +9,7 @@ use crate::mod_file::{
     cmd_line_parser::Args, utils_check::AllPath, utils_data, web,
 };
 
-pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, args: &Args, client: &Client, path: &AllPath) -> Result<(usize, usize), Box<dyn Error>> {
     let mut all_l = vec![];
 
     // direct url
@@ -99,9 +99,9 @@ async fn get_all_link_base_href(driver: &WebDriver, args: &Args) -> Result<Vec<S
     Ok(url_found)
 }
 
-async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath) -> Result<(u16, u16), Box<dyn Error>> {
-    let mut nb_found = 0u16;
-    let mut nb_error = 0u16;
+async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<String>, client: &Client, path: &AllPath) -> Result<(usize, usize), Box<dyn Error>> {
+    let mut nb_found = 0;
+    let mut nb_error = 0;
 
     for fuse_iframe in all_l {
         driver.handle.goto(&fuse_iframe).await?;
@@ -139,7 +139,7 @@ async fn enter_iframe_wait_jwplayer(driver: &WebDriver, args: &Args, all_l: Vec<
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(mut nb_found: u16, mut nb_error: u16, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args) -> Result<(u16, u16), Box<dyn Error>> {
+async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, path: &AllPath, client: &Client, args: &Args) -> Result<(usize, usize), Box<dyn Error>> {
     let name = utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
     );

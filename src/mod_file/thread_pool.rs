@@ -1,18 +1,16 @@
-use std::{error::Error, sync::Arc, thread};
+use std::{sync::Arc, thread};
 
 use crossbeam::queue::ArrayQueue;
 
 use crate::{mod_file::cmd_line_parser::Args, warn};
 
-pub fn max_thread_check(new_args: &Args) -> Result<usize, Box<dyn Error>> {
-    let mut thread = new_args.thread as usize;
-    let max_thread = thread::available_parallelism()?.get() * 4;
-    if thread > max_thread {
+pub fn max_thread_check(new_args: &mut Args) {
+    let max_thread = thread::available_parallelism().unwrap().get() * 4;
+    if new_args.thread > max_thread {
         warn!("Max thread for your cpu is between 1 and {}", max_thread);
-        thread = max_thread;
-        warn!("Update thread for {} continue", thread);
+        new_args.thread = max_thread;
+        warn!("Update thread for {} continue", new_args.thread);
     }
-    Ok(thread)
 }
 
 pub struct ThreadPool {

@@ -1,6 +1,6 @@
 #![feature(fs_try_exists)]
 
-use std::{error::Error, time::{Duration, Instant}, str::FromStr, sync::mpsc};
+use std::{error::Error, str::FromStr, sync::mpsc, time::{Duration, Instant}};
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -10,17 +10,15 @@ use thirtyfour::WebDriver;
 
 use mod_file::{
     {search, search::ProcessingUrl},
-    {utils_data, utils_data::time_to_human_time}, chrome_spawn::ChromeChild,
-    cmd_line_parser,
-    cmd_line_parser::Scan, process_part1, process_part1::{add_ublock, connect_to_chrome_driver},
+    {utils_data, utils_data::time_to_human_time},
+    chrome_spawn::ChromeChild,
+    cmd_line_parser::{self, Args, Scan},
+    process_part1::{self, add_ublock, connect_to_chrome_driver},
     static_data,
-    thread_pool,
-    utils_check,
+    thread_pool::{self, ThreadPool},
+    utils_check::{self, AllPath},
+    web,
 };
-use crate::mod_file::cmd_line_parser::Args;
-use crate::mod_file::thread_pool::ThreadPool;
-use crate::mod_file::utils_check::AllPath;
-use crate::mod_file::web;
 
 mod mod_file;
 
@@ -34,20 +32,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     info!("{}", new_args);
 
-    let thread = thread_pool::max_thread_check(&new_args)?;
-
-    let client = Client::builder().build()?;
+    thread_pool::max_thread_check(&mut new_args);
 
     let path = utils_check::confirm_chrome_ffmpeg_ublock_presence().await?;
-
     let processing_url = setup_search_or_download(&mut new_args).await?;
+    let client = Client::builder().build()?;
 
-    let _ = iter_over_url_found(&new_args, &path, processing_url, thread, &client).await?;
+    let _ = iter_over_url_found(&mut new_args, &path, processing_url, &client).await?;
 
     Ok(())
 }
 
-async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, driver: WebDriver, client: &Client) -> Result<(), Box<dyn Error>> {
+async fn start(url_test: &str, path: &AllPath, args: &mut Args, driver: WebDriver, client: &Client) -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
     let (save_path, good, error) = process_part1::scan_main(&driver, url_test, path, &client, args).await?;
@@ -56,9 +52,9 @@ async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, d
 
     process_part1::shutdown_chrome(args, &driver).await;
 
-    if thread > good as usize {
-        warn!("update thread count from {thread} to {good}");
-        thread = good as usize;
+    if args.thread > good {
+        warn!("update thread count from {} to {good}", args.thread);
+        args.thread = good;
     }
 
     let (mut vec_m3u8_path_folder, vec_save_path_vlc) =
@@ -66,7 +62,7 @@ async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, d
 
     utils_data::custom_sort(&mut vec_m3u8_path_folder);
 
-    info!("Start Processing with {} threads", thread);
+    info!("Start Processing with {} threads", args.thread);
 
     let progress_bar = ProgressBar::new(good as u64);
     progress_bar.enable_steady_tick(Duration::from_secs(1));
@@ -78,7 +74,7 @@ async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, d
     );
 
     let (tx, rx) = mpsc::channel();
-    let mut pool = ThreadPool::new(thread, good as usize);
+    let mut pool = ThreadPool::new(args.thread, good);
     for (output_path, name) in vec_m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = path.ffmpeg_path.clone();
@@ -96,20 +92,22 @@ async fn start(url_test: &str, path: &AllPath, mut thread: usize, args: &Args, d
 
     drop(tx);
 
-    for _ in rx.iter().take(good as usize) {
+    for _ in rx.iter().take(good) {
         progress_bar.inc(1);
     }
 
     progress_bar.finish();
 
-    process_part1::build_vlc_playlist(good, args, vec_save_path_vlc)?;
+    if good >= 2 && args.vlc_playlist {
+        process_part1::build_vlc_playlist(vec_save_path_vlc)?;
+    }
 
     process_part1::end_print(before, path, good, error);
 
     Ok(())
 }
 
-async fn iter_over_url_found(new_args: &Args, path: &AllPath, processing_url: Vec<ProcessingUrl>, thread: usize, client: &Client) -> Result<(), Box<dyn Error>>{
+async fn iter_over_url_found(new_args: &mut Args, path: &AllPath, processing_url: Vec<ProcessingUrl>, client: &Client) -> Result<(), Box<dyn Error>> {
     time_it!("Global time:", {
         if new_args.debug {
             debug!("spawn chrome process");
@@ -126,7 +124,7 @@ async fn iter_over_url_found(new_args: &Args, path: &AllPath, processing_url: Ve
             info!("Process: {}", x.url);
             let driver = connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
 
-            start(&x.url, &path, thread, &new_args, driver, client).await?;
+            start(&x.url, &path, new_args, driver, client).await?;
         }
 
         child.chrome.kill()?;
@@ -135,8 +133,7 @@ async fn iter_over_url_found(new_args: &Args, path: &AllPath, processing_url: Ve
     Ok(())
 }
 
-async fn setup_search_or_download(new_args: &mut Args) -> Result<Vec<ProcessingUrl>, Box<dyn Error>>{
-
+async fn setup_search_or_download(new_args: &mut Args) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
             let find = search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
@@ -158,7 +155,7 @@ async fn setup_search_or_download(new_args: &mut Args) -> Result<Vec<ProcessingU
     Ok(processing_url)
 }
 
-fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer, ) -> Vec<ProcessingUrl> {
+fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer) -> Vec<ProcessingUrl> {
     answer
         .try_into_list_items()
         .unwrap()
@@ -195,7 +192,7 @@ fn build_question(find: &Vec<ProcessingUrl>) -> requestty::Result<Answer> {
     prompt_one(multi_select)
 }
 
-fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>){
+fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
     let mut ep = 0;
     let mut film = 0;
 
@@ -219,7 +216,7 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>){
                 "Seasons found: {} Episode found: {} ({}~ Go Total) Films found {} ({}~ Go Total)",
                 find.len(),
                 ep,
-                ep * 250 / 1024,
+                ep * 230 / 1024,
                 film,
                 film * 1300 / 1024
             );
