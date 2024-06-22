@@ -6,10 +6,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use reqwest::Client;
 use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
-use crate::{debug, error, info, warn};
+use crate::{debug, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
 use crate::neko_process::{html_parser, html_parser::get_base_name_direct_url};
 use crate::utils::utils_check::AllPath;
@@ -17,18 +16,13 @@ use crate::utils::utils_data;
 use crate::utils::utils_data::ask_something;
 use crate::vlc::vlc_playlist_builder;
 
-pub(crate) async fn scan_main(
-    driver: &WebDriver,
-    url_test: &str,
-    path: &AllPath,
-    client: &Client,
-    args: &Args,
-) -> Result<(String, usize, usize), Box<dyn Error>> {
+pub async fn scan_main(driver: &WebDriver, url_test: &str, main_arg: &MainArg) 
+    -> Result<(String, usize, usize), Box<dyn Error>> {
     info!("Scan Main Page");
     let mut save_path = String::new();
 
     let (good, error) =
-        build_path_to_save_final_video(&mut save_path, &driver, url_test, path, &client, &args)
+        build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg)
             .await?;
 
     info!("total found: {}", good);
@@ -36,8 +30,8 @@ pub(crate) async fn scan_main(
     Ok((save_path, good, error))
 }
 
-pub(crate) fn prevent_case_nothing_found_or_error(good: usize, error: usize, args: &Args) {
-    if error > 0 && args.ignore_alert_missing_episode {
+pub fn prevent_case_nothing_found_or_error(good: usize, error: usize, args: &MainArg) {
+    if error > 0 && args.new_args.ignore_alert_missing_episode {
         if let Ok(e) =
             ask_something("Continue with missing episode(s) ? 'Y' continue, 'n' to cancel : ")
         {
@@ -55,37 +49,36 @@ pub(crate) fn prevent_case_nothing_found_or_error(good: usize, error: usize, arg
     }
 }
 
-pub(crate) async fn shutdown_chrome(args: &Args, driver: &WebDriver) {
+pub async fn shutdown_chrome(args: &MainArg, driver: &WebDriver) {
     // kill chromedriver
-    if args.debug {
+    if args.new_args.debug {
         debug!("chromedriver close_window");
     }
     if let Ok(_) = <WebDriver as Clone>::clone(&driver).close_window().await {}
-    if args.debug {
+    if args.new_args.debug {
         debug!("chromedriver quit");
     }
     if let Ok(_) = <WebDriver as Clone>::clone(&driver).quit().await {}
-    if args.debug {
+    if args.new_args.debug {
         debug!("chromedriver kill process");
     }
 }
 
-pub fn add_ublock(args: &Args, path: &AllPath) -> Result<ChromeCapabilities, Box<dyn Error>> {
-    if args.debug {
+pub fn add_ublock(args: &MainArg) 
+    -> Result<ChromeCapabilities, Box<dyn Error>> {
+    if args.new_args.debug {
         debug!("add ublock origin");
     }
     let mut prefs = ChromeCapabilities::new();
     prefs
-        .add_extension(&*path.u_block_path)
+        .add_extension(&*args.path.u_block_path)
         .expect("can't install ublock origin");
     prefs.set_ignore_certificate_errors()?;
     Ok(prefs)
 }
 
-pub(crate) fn build_vec_m3u8_folder_path(
-    path: &AllPath,
-    save_path: String,
-) -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
+pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, ) 
+    -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
     let mut save_path_vlc = vec![];
 
     let m3u8_path_folder: Vec<_> = fs::read_dir(&path.tmp_dl)?
@@ -122,52 +115,43 @@ pub(crate) fn build_vec_m3u8_folder_path(
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
-pub(crate) fn build_vlc_playlist(
-    mut save_path_vlc: Vec<(PathBuf, String)>,
-) -> Result<(), Box<dyn Error>> {
+pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>, ) 
+    -> Result<(), Box<dyn Error>> {
     info!("Build vlc playlist");
     utils_data::custom_sort_vlc(&mut save_path_vlc);
     vlc_playlist_builder::new(save_path_vlc)?;
     Ok(())
 }
 
-pub async fn connect_to_chrome_driver(
-    args: &Args,
-    prefs: ChromeCapabilities,
-    url_test: &str,
-) -> Result<WebDriver, Box<dyn Error>> {
-    if args.debug {
+pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities, url_test: &str, ) 
+    -> Result<WebDriver, Box<dyn Error>> {
+
+    if args.new_args.debug {
         debug!("connect to chrome driver");
     }
 
     let driver = WebDriver::new("http://localhost:6969", prefs).await?;
-    if args.minimized_chrome {
+
+    if args.new_args.minimized_chrome {
         driver.minimize_window().await?;
     }
-    driver
-        .set_page_load_timeout(Duration::from_secs(20))
-        .await?;
 
+    driver.set_page_load_timeout(Duration::from_secs(20)).await?;
     driver.goto(url_test).await?;
 
     Ok(driver)
 }
 
-async fn build_path_to_save_final_video(
-    save_path: &mut String,
-    drivers: &WebDriver,
-    url_test: &str,
-    path: &AllPath,
-    client: &Client,
-    args: &Args,
-) -> Result<(usize, usize), Box<dyn Error>> {
-    fs::create_dir_all(&path.tmp_dl)?;
+async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg) 
+    -> Result<(usize, usize), Box<dyn Error>> {
+    fs::create_dir_all(&main_arg.path.tmp_dl)?;
 
-    let mut _name = get_name_based_on_url(url_test, args, &drivers).await?;
-    save_path.push_str(_name.as_str());
+    let name = get_name_based_on_url(url_test, &main_arg.new_args, &drivers).await?;
 
-    let season_path = path.tmp_dl.parent().unwrap().join(save_path);
-    if args.ignore_alert_missing_episode {
+    save_path.push_str(name.as_str());
+
+    let season_path = main_arg.path.tmp_dl.parent().unwrap().join(save_path);
+    if main_arg.new_args.ignore_alert_missing_episode {
         if fs::try_exists(season_path.clone()).unwrap() {
             warn!("Path already exist\n{}", season_path.display());
             if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
@@ -182,15 +166,13 @@ async fn build_path_to_save_final_video(
     }
 
     fs::create_dir_all(season_path)?;
-    Ok(html_parser::recursive_find_url(&drivers, url_test, args, &client, path).await?)
+    Ok(html_parser::recursive_find_url(&drivers, url_test, main_arg).await?)
 }
 
-async fn get_name_based_on_url(
-    url_test: &str,
-    args: &Args,
-    drivers: &WebDriver,
-) -> Result<String, Box<dyn Error>> {
-    let _path = if !url_test.contains("/episode/") {
+async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver, ) 
+    -> Result<String, Box<dyn Error>> {
+
+    let path = if !url_test.contains("/episode/") {
         format!(
             "Anime_Download/{}/{}",
             args.language.to_uppercase(),
@@ -214,10 +196,10 @@ async fn get_name_based_on_url(
             )
         )
     };
-    Ok(_path)
+    Ok(path)
 }
 
-pub(crate) fn end_print(before: Instant, path: &AllPath, good: usize, error: usize) {
+pub fn end_print(before: Instant, path: &AllPath, good: usize, error: usize) {
     info!("Clean tmp dir!");
     utils_data::remove_dir_contents(&path.tmp_dl);
     info!(

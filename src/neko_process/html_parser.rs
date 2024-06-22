@@ -1,29 +1,23 @@
-use std::{error::Error, fs::File, io, path::PathBuf};
+use std::{error::Error, fs::File, io};
 
 use m3u8_rs::Playlist;
-use reqwest::{Client, StatusCode};
+use reqwest::StatusCode;
 use thirtyfour::{By, WebDriver, WebElement};
 
-use crate::{debug, error, info, warn};
+use crate::{debug, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
-use crate::utils::utils_check::AllPath;
 use crate::utils::utils_data;
 use crate::web_client::web;
 
-pub async fn recursive_find_url(
-    driver: &WebDriver,
-    _url_test: &str,
-    args: &Args,
-    client: &Client,
-    path: &AllPath,
-) -> Result<(usize, usize), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &MainArg) 
+    -> Result<(usize, usize), Box<dyn Error>> {
     let mut all_l = vec![];
 
     // direct url
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
         all_l.push(_url_test.to_string());
-        let video_url = enter_iframe_wait_jwplayer(&driver, args, all_l, client, path).await?;
+        let video_url = enter_iframe_wait_jwplayer(&driver, all_l, main_arg).await?;
         return Ok(video_url);
     }
 
@@ -32,23 +26,20 @@ pub async fn recursive_find_url(
 
     // only one page
     if n.len() == 0 {
-        all_l.extend(get_all_link_base_href(&driver, args).await?);
+        all_l.extend(get_all_link_base_href(&driver, &main_arg.new_args).await?);
     }
 
     // iter over all page possible
-    let page_return = next_page(&driver, args, &n).await?;
+    let page_return = next_page(&driver, &main_arg.new_args, &n).await?;
     all_l.extend(page_return);
 
-    let video_url = enter_iframe_wait_jwplayer(&driver, args, all_l, client, path).await?;
+    let video_url = enter_iframe_wait_jwplayer(&driver, all_l, main_arg).await?;
 
     Ok(video_url)
 }
 
-async fn next_page(
-    driver: &WebDriver,
-    args: &Args,
-    n: &Vec<WebElement>,
-) -> Result<Vec<String>, Box<dyn Error>> {
+async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, ) 
+    -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_links = vec![];
     while n.len() != 0 {
         all_links.extend(get_all_link_base_href(&driver, args).await?);
@@ -76,7 +67,8 @@ async fn next_page(
     Ok(all_links)
 }
 
-pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
+pub async fn get_base_name_direct_url(driver: &WebDriver) 
+    -> String {
     let class = driver
         .find(By::XPath(
             r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#,
@@ -91,10 +83,8 @@ pub async fn get_base_name_direct_url(driver: &WebDriver) -> String {
     path
 }
 
-async fn get_all_link_base_href(
-    driver: &WebDriver,
-    args: &Args,
-) -> Result<Vec<String>, Box<dyn Error>> {
+async fn get_all_link_base_href(driver: &WebDriver, args: &Args, ) 
+    -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -113,13 +103,8 @@ async fn get_all_link_base_href(
     Ok(url_found)
 }
 
-async fn enter_iframe_wait_jwplayer(
-    driver: &WebDriver,
-    args: &Args,
-    all_l: Vec<String>,
-    client: &Client,
-    path: &AllPath,
-) -> Result<(usize, usize), Box<dyn Error>> {
+async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main_arg: &MainArg) 
+    -> Result<(usize, usize), Box<dyn Error>> {
     let mut nb_found = 0;
     let mut nb_error = 0;
 
@@ -148,7 +133,7 @@ async fn enter_iframe_wait_jwplayer(
                         }
                     }
                     let (found, error) =
-                        find_and_get_m3u8(nb_found, nb_error, &driver, &path, &client, &args).await?;
+                        find_and_get_m3u8(nb_found, nb_error, &driver, main_arg).await?;
                     nb_found = found;
                     nb_error = error;
                 }
@@ -164,14 +149,8 @@ async fn enter_iframe_wait_jwplayer(
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(
-    mut nb_found: usize,
-    mut nb_error: usize,
-    driver: &WebDriver,
-    path: &AllPath,
-    client: &Client,
-    args: &Args,
-) -> Result<(usize, usize), Box<dyn Error>> {
+async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg ) 
+    -> Result<(usize, usize), Box<dyn Error>> {
     let name = utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
     );
@@ -190,9 +169,7 @@ async fn find_and_get_m3u8(
                     download_and_save_m3u8(
                         url,
                         &name.trim().replace(":", "").replace(" ", "_"),
-                        &path.tmp_dl,
-                        &client,
-                        args,
+                        main_arg,
                     )
                         .await?;
 
@@ -209,32 +186,27 @@ async fn find_and_get_m3u8(
     Ok((nb_found, nb_error))
 }
 
-async fn download_and_save_m3u8(
-    url: &str,
-    file_name: &str,
-    tmp_dl: &PathBuf,
-    client: &Client,
-    args: &Args,
-) -> Result<(), Box<dyn Error>> {
-    match web::web_request(&client, &url).await {
+async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg ) 
+    -> Result<(), Box<dyn Error>> {
+    match web::web_request(&main_arg.client, &url).await {
         Ok(body) => match body.status() {
             StatusCode::OK => {
                 let await_response = body.text().await?;
                 let split = await_response.as_bytes();
                 let parsed = m3u8_rs::parse_playlist_res(split).unwrap();
 
-                let good_url = test_resolution(parsed, &args, &client).await;
+                let good_url = test_resolution(parsed, main_arg).await;
 
                 let mut out =
-                    File::create(format!("{}/{file_name}.m3u8", tmp_dl.to_str().unwrap()))
+                    File::create(format!("{}/{file_name}.m3u8", main_arg.path.tmp_dl.to_str().unwrap()))
                         .expect("failed to create file");
 
-                if args.debug {
+                if main_arg.new_args.debug {
                     debug!("create .m3u8 for {}", file_name);
                 }
 
                 io::copy(
-                    &mut web::web_request(&client, &good_url)
+                    &mut web::web_request(&main_arg.client, &good_url)
                         .await?
                         .text()
                         .await?
@@ -243,7 +215,7 @@ async fn download_and_save_m3u8(
                 )
                     .expect("Error copy");
 
-                if args.debug {
+                if main_arg.new_args.debug {
                     debug!("write .m3u8 for {}", file_name);
                 }
             }
@@ -256,26 +228,23 @@ async fn download_and_save_m3u8(
     Ok(())
 }
 
-async fn test_resolution(
-    parsed: Playlist,
-    args: &Args,
-    client: &Client,
-) -> String {
+async fn test_resolution(parsed: Playlist,  main_arg: &MainArg ) 
+    -> String {
     let mut _good_url = String::new();
     match parsed {
         Playlist::MasterPlaylist(pl) => {
-            if args.debug {
+            if main_arg.new_args.debug {
                 debug!("MasterPlaylist {:#?}", pl);
             }
             for ele in pl.variants {
                 let resolution = ele.resolution.expect("No resolution found").height;
-                let test = web::web_request(&client, &ele.uri).await;
+                let test = web::web_request(&main_arg.client, &ele.uri).await;
                 match test {
                     Ok(code) => match code.status() {
                         StatusCode::OK => {
                             info!("Download as {}p", resolution);
                             _good_url = ele.uri;
-                            if args.debug {
+                            if main_arg.new_args.debug {
                                 debug!("url .m3u8 {}", _good_url);
                             }
                             break;

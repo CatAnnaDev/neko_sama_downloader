@@ -36,8 +36,16 @@ mod cmd_arg;
 mod search_engine;
 mod web_client;
 
+pub struct MainArg {
+    new_args: Args,
+    path: AllPath,
+    processing_url: Vec<ProcessingUrl>,
+    client: Client,
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main()
+    -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
 
     header!("{}", static_data::HEADER);
@@ -59,35 +67,36 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let client = Client::builder().build()?;
 
-    let _ = iter_over_url_found(&mut new_args, &path, processing_url.unwrap(), &client).await?;
+    let mut arg = MainArg{
+        new_args,
+        path,
+        processing_url: processing_url.unwrap(),
+        client,
+    };
+
+    let _ = iter_over_url_found(&mut arg).await?;
 
     Ok(())
 }
 
-async fn start(
-    url_test: &str,
-    path: &AllPath,
-    args: &mut Args,
-    driver: WebDriver,
-    client: &Client,
-) -> Result<(), Box<dyn Error>> {
+async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
+    -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
-    let (save_path, good, error) =
-        process::scan_main(&driver, url_test, path, &client, args).await?;
+    let (save_path, good, error) = process::scan_main(&driver, url_test, main_arg).await?;
 
-    process::prevent_case_nothing_found_or_error(good, error, args);
+    process::prevent_case_nothing_found_or_error(good, error, main_arg);
 
-    process::shutdown_chrome(args, &driver).await;
+    process::shutdown_chrome(main_arg, &driver).await;
 
-    let mut new_thread = args.thread;
+    let mut new_thread = main_arg.new_args.thread;
     if new_thread > good {
         warn!("update thread count from {new_thread} to {good}");
         new_thread = good;
     }
 
     let (mut vec_m3u8_path_folder, vec_save_path_vlc) =
-        process::build_vec_m3u8_folder_path(path, save_path)?;
+        process::build_vec_m3u8_folder_path(&main_arg.path, save_path)?;
 
     utils_data::custom_sort(&mut vec_m3u8_path_folder);
 
@@ -106,8 +115,8 @@ async fn start(
     let mut pool = ThreadPool::new(new_thread, good);
     for (output_path, name) in vec_m3u8_path_folder {
         let tx = tx.clone();
-        let ffmpeg = path.ffmpeg_path.clone();
-        let debug = args.debug.clone();
+        let ffmpeg = main_arg.path.ffmpeg_path.clone();
+        let debug = main_arg.new_args.debug.clone();
         pool.execute(move || {
             tx.send(web::download_build_video(
                 &output_path.to_str().unwrap(),
@@ -127,38 +136,37 @@ async fn start(
 
     progress_bar.finish();
 
-    if good >= 2 && args.vlc_playlist {
+    if good >= 2 && main_arg.new_args.vlc_playlist {
         process::build_vlc_playlist(vec_save_path_vlc)?;
     }
 
-    process::end_print(before, path, good, error);
+    process::end_print(before, &main_arg.path, good, error);
 
     Ok(())
 }
 
-async fn iter_over_url_found(
-    new_args: &mut Args,
-    path: &AllPath,
-    processing_url: Vec<ProcessingUrl>,
-    client: &Client,
-) -> Result<(), Box<dyn Error>> {
+async fn iter_over_url_found(main_arg: &mut MainArg, )
+    -> Result<(), Box<dyn Error>> {
+
     time_it!("Global time:", {
-        if new_args.debug {
+
+        if main_arg.new_args.debug {
             debug!("spawn chrome process");
         }
 
-        let mut child = ChromeChild::spawn(&path.chrome_path);
-        if new_args.debug {
+        let mut child = ChromeChild::spawn(&main_arg.path.chrome_path);
+        if main_arg.new_args.debug {
             debug!("wait 1sec chrome process spawn correctly");
         }
+
         tokio::time::sleep(Duration::from_secs(1)).await;
 
-        for (index, x) in processing_url.iter().enumerate() {
-            header!("Step {} / {}", index + 1, processing_url.len());
+        for (index, x) in main_arg.processing_url.iter().enumerate() {
+            header!("Step {} / {}", index + 1, main_arg.processing_url.len());
             info!("Process: {}", x.url);
-            let driver =
-                connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
-            start(&x.url, &path, new_args, driver, client).await?;
+            let driver = connect_to_chrome_driver(&main_arg, add_ublock(&main_arg)?, &x.url).await?;
+
+            start(&x.url, driver, &main_arg).await?;
         }
 
         child.chrome.kill()?;
@@ -167,9 +175,8 @@ async fn iter_over_url_found(
     Ok(())
 }
 
-async fn setup_search_or_download(
-    new_args: &mut Args,
-) -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
+async fn setup_search_or_download(new_args: &mut Args, )
+    -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
             match search::search_over_json(&keyword, &new_args.language, &new_args.debug).await{
@@ -200,7 +207,8 @@ async fn setup_search_or_download(
     Ok(processing_url)
 }
 
-fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer) -> Vec<ProcessingUrl> {
+fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer)
+    -> Vec<ProcessingUrl> {
     answer
         .try_into_list_items()
         .unwrap()
@@ -209,7 +217,8 @@ fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer) -> Vec<
         .collect()
 }
 
-fn build_question(find: &Vec<ProcessingUrl>) -> requestty::Result<Answer> {
+fn build_question(find: &Vec<ProcessingUrl>)
+    -> requestty::Result<Answer> {
     let multi_select = Question::multi_select("Season")
         .message("What seasons do you want?")
         .choices(
@@ -267,7 +276,8 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
     );
 }
 
-fn ask_keyword(new_args: &mut Args) -> Result<(), Box<dyn Error>> {
+fn ask_keyword(new_args: &mut Args)
+    -> Result<(), Box<dyn Error>> {
     if new_args.url_or_search_word.is_empty() {
         if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
