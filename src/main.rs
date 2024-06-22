@@ -95,8 +95,7 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
         new_thread = good;
     }
 
-    let (mut vec_m3u8_path_folder, vec_save_path_vlc) =
-        process::build_vec_m3u8_folder_path(&main_arg.path, save_path)?;
+    let (mut vec_m3u8_path_folder, vec_save_path_vlc) = process::build_vec_m3u8_folder_path(&main_arg.path, save_path)?;
 
     utils_data::custom_sort(&mut vec_m3u8_path_folder);
 

@@ -9,16 +9,15 @@ use crate::cmd_arg::cmd_line_parser::Args;
 use crate::utils::utils_data;
 use crate::web_client::web;
 
-pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &MainArg) 
-    -> Result<(usize, usize), Box<dyn Error>> {
+pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &MainArg)
+    -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_l = vec![];
 
     // direct url
     if _url_test.contains("/episode/") {
         driver.goto(_url_test).await?;
         all_l.push(_url_test.to_string());
-        let video_url = enter_iframe_wait_jwplayer(&driver, all_l, main_arg).await?;
-        return Ok(video_url);
+        return Ok(all_l);
     }
 
     // check next page
@@ -32,13 +31,10 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &
     // iter over all page possible
     let page_return = next_page(&driver, &main_arg.new_args, &n).await?;
     all_l.extend(page_return);
-
-    let video_url = enter_iframe_wait_jwplayer(&driver, all_l, main_arg).await?;
-
-    Ok(video_url)
+    Ok(all_l)
 }
 
-async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, ) 
+async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, )
     -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_links = vec![];
     while n.len() != 0 {
@@ -67,7 +63,7 @@ async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, )
     Ok(all_links)
 }
 
-pub async fn get_base_name_direct_url(driver: &WebDriver) 
+pub async fn get_base_name_direct_url(driver: &WebDriver)
     -> String {
     let class = driver
         .find(By::XPath(
@@ -83,7 +79,7 @@ pub async fn get_base_name_direct_url(driver: &WebDriver)
     path
 }
 
-async fn get_all_link_base_href(driver: &WebDriver, args: &Args, ) 
+async fn get_all_link_base_href(driver: &WebDriver, args: &Args, )
     -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
@@ -103,7 +99,7 @@ async fn get_all_link_base_href(driver: &WebDriver, args: &Args, )
     Ok(url_found)
 }
 
-async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main_arg: &MainArg) 
+pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main_arg: &MainArg)
     -> Result<(usize, usize), Box<dyn Error>> {
     let mut nb_found = 0;
     let mut nb_error = 0;
@@ -132,8 +128,7 @@ async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main
                             }
                         }
                     }
-                    let (found, error) =
-                        find_and_get_m3u8(nb_found, nb_error, &driver, main_arg).await?;
+                    let (found, error) = find_and_get_m3u8(nb_found, nb_error, &driver, main_arg).await?;
                     nb_found = found;
                     nb_error = error;
                 }
@@ -149,7 +144,7 @@ async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg ) 
+async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg )
     -> Result<(usize, usize), Box<dyn Error>> {
     let name = utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
@@ -186,7 +181,7 @@ async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &We
     Ok((nb_found, nb_error))
 }
 
-async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg ) 
+async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg )
     -> Result<(), Box<dyn Error>> {
     match web::web_request(&main_arg.client, &url).await {
         Ok(body) => match body.status() {
@@ -228,7 +223,7 @@ async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg )
     Ok(())
 }
 
-async fn test_resolution(parsed: Playlist,  main_arg: &MainArg ) 
+async fn test_resolution(parsed: Playlist,  main_arg: &MainArg )
     -> String {
     let mut _good_url = String::new();
     match parsed {

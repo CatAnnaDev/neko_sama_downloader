@@ -11,22 +11,28 @@ use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 use crate::{debug, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
 use crate::neko_process::{html_parser, html_parser::get_base_name_direct_url};
+use crate::neko_process::html_parser::enter_iframe_wait_jwplayer;
 use crate::utils::utils_check::AllPath;
 use crate::utils::utils_data;
 use crate::utils::utils_data::ask_something;
 use crate::vlc::vlc_playlist_builder;
 
-pub async fn scan_main(driver: &WebDriver, url_test: &str, main_arg: &MainArg) 
+pub async fn scan_main(driver: &WebDriver, url_test: &str, main_arg: &MainArg)
     -> Result<(String, usize, usize), Box<dyn Error>> {
     info!("Scan Main Page");
-    let mut save_path = String::new();
+    
+    // found all urls 
+    let all_url_found = html_parser::recursive_find_url(&driver, url_test, main_arg).await?;
 
-    let (good, error) =
-        build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg)
-            .await?;
+    let mut save_path = String::new();
+    // make final path to save
+    build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg).await?;
+    
+    // iter overs all urls found 
+    let (good, error) = enter_iframe_wait_jwplayer(&driver, all_url_found, main_arg).await?;
 
     info!("total found: {}", good);
-
+        
     Ok((save_path, good, error))
 }
 
@@ -64,7 +70,7 @@ pub async fn shutdown_chrome(args: &MainArg, driver: &WebDriver) {
     }
 }
 
-pub fn add_ublock(args: &MainArg) 
+pub fn add_ublock(args: &MainArg)
     -> Result<ChromeCapabilities, Box<dyn Error>> {
     if args.new_args.debug {
         debug!("add ublock origin");
@@ -77,7 +83,7 @@ pub fn add_ublock(args: &MainArg)
     Ok(prefs)
 }
 
-pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, ) 
+pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, )
     -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
     let mut save_path_vlc = vec![];
 
@@ -115,7 +121,7 @@ pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, )
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
-pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>, ) 
+pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>, )
     -> Result<(), Box<dyn Error>> {
     info!("Build vlc playlist");
     utils_data::custom_sort_vlc(&mut save_path_vlc);
@@ -123,7 +129,7 @@ pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>, )
     Ok(())
 }
 
-pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities, url_test: &str, ) 
+pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities, url_test: &str, )
     -> Result<WebDriver, Box<dyn Error>> {
 
     if args.new_args.debug {
@@ -142,8 +148,8 @@ pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities,
     Ok(driver)
 }
 
-async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg) 
-    -> Result<(usize, usize), Box<dyn Error>> {
+async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg)
+    -> Result<(), Box<dyn Error>> {
     fs::create_dir_all(&main_arg.path.tmp_dl)?;
 
     let name = get_name_based_on_url(url_test, &main_arg.new_args, &drivers).await?;
@@ -166,10 +172,10 @@ async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDri
     }
 
     fs::create_dir_all(season_path)?;
-    Ok(html_parser::recursive_find_url(&drivers, url_test, main_arg).await?)
+    Ok(())
 }
 
-async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver, ) 
+async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver, )
     -> Result<String, Box<dyn Error>> {
 
     let path = if !url_test.contains("/episode/") {
