@@ -42,11 +42,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     header!("{}", static_data::HEADER);
     warn!("Please if you got an Error remember to update Google chrome and chromedriver");
-    let mut processing_url = Option::from(None);
+    let mut processing_url = None;
     while processing_url.is_none() {
         let _ = ask_keyword(&mut new_args);
         processing_url = setup_search_or_download(&mut new_args).await?;
-        new_args.url_or_search_word = Scan::Search("".to_owned())
+        if processing_url.is_none() {
+            new_args.url_or_search_word = Scan::Search("".to_owned())
+        }
     }
 
     info!("{}", new_args);
