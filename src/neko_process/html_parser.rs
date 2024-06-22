@@ -152,9 +152,9 @@ async fn enter_iframe_wait_jwplayer(
                     nb_found = found;
                     nb_error = error;
                 }
-                Err(_) => {  }
+                Err(_) => {}
             }
-        }else {
+        } else {
             nb_error += 1;
             warn!("ignored 404: {}", driver.title().await?)
         }
@@ -194,7 +194,7 @@ async fn find_and_get_m3u8(
                         &client,
                         args,
                     )
-                    .await?;
+                        .await?;
 
                     nb_found += 1;
                 }
@@ -241,7 +241,7 @@ async fn download_and_save_m3u8(
                         .as_bytes(),
                     &mut out,
                 )
-                .expect("Error copy");
+                    .expect("Error copy");
 
                 if args.debug {
                     debug!("write .m3u8 for {}", file_name);

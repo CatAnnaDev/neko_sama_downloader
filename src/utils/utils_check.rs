@@ -1,10 +1,10 @@
 use std::{
+    {fs, fs::File},
     env,
     error::Error,
     io::Write,
     path::PathBuf,
     process::exit,
-    {fs, fs::File},
 };
 
 use reqwest::Client;

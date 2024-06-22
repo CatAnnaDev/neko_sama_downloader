@@ -9,13 +9,12 @@ use std::{
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
-use requestty::{prompt_one, Answer, OnEsc, Question};
+use requestty::{Answer, OnEsc, prompt_one, Question};
 use reqwest::Client;
 use thirtyfour::WebDriver;
 
-use neko_process::{
-    process::{self, add_ublock, connect_to_chrome_driver},
-};
+use neko_process::process::{self, add_ublock, connect_to_chrome_driver};
+
 use crate::chrome::chrome_spawn::ChromeChild;
 use crate::cmd_arg::cmd_line_parser;
 use crate::cmd_arg::cmd_line_parser::{Args, Scan};
@@ -108,7 +107,7 @@ async fn start(
                 &ffmpeg,
                 &debug,
             ))
-            .unwrap_or(())
+                .unwrap_or(())
         })
     }
 

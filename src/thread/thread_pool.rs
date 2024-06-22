@@ -2,8 +2,8 @@ use std::{sync::Arc, thread};
 
 use crossbeam::queue::ArrayQueue;
 
-use crate::warn;
 use crate::cmd_arg::cmd_line_parser::Args;
+use crate::warn;
 
 pub fn max_thread_check(new_args: &mut Args) {
     let max_thread = thread::available_parallelism().unwrap().get() * 4;
