@@ -80,9 +80,10 @@ async fn start(
 
     process::shutdown_chrome(args, &driver).await;
 
-    if args.thread > good {
-        warn!("update thread count from {} to {good}", args.thread);
-        args.thread = good;
+    let mut new_thread = args.thread;
+    if new_thread > good {
+        warn!("update thread count from {new_thread} to {good}");
+        new_thread = good;
     }
 
     let (mut vec_m3u8_path_folder, vec_save_path_vlc) =
@@ -90,7 +91,7 @@ async fn start(
 
     utils_data::custom_sort(&mut vec_m3u8_path_folder);
 
-    info!("Start Processing with {} threads", args.thread);
+    info!("Start Processing with {} threads", new_thread);
 
     let progress_bar = ProgressBar::new(good as u64);
     progress_bar.enable_steady_tick(Duration::from_secs(1));
@@ -102,7 +103,7 @@ async fn start(
     );
 
     let (tx, rx) = mpsc::channel();
-    let mut pool = ThreadPool::new(args.thread, good);
+    let mut pool = ThreadPool::new(new_thread, good);
     for (output_path, name) in vec_m3u8_path_folder {
         let tx = tx.clone();
         let ffmpeg = path.ffmpeg_path.clone();
