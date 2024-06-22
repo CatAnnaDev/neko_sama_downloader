@@ -1,8 +1,7 @@
-use std::{error::Error, process::exit, time::Duration};
+use std::error::Error;
 
 use reqwest::Client;
 use serde_derive::{Deserialize, Serialize};
-use tokio::time;
 
 use crate::{debug, warn};
 use crate::web_client::web;
@@ -67,8 +66,6 @@ pub async fn search_over_json(
     if find.len() == 0 {
         warn!("Noting found retry with another keyword");
         warn!("Or try with -l vostfr or -l vf (vf is used by default)");
-        time::sleep(Duration::from_secs(20)).await;
-        exit(130);
     }
     Ok(find)
 }

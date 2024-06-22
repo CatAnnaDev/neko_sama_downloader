@@ -1,7 +1,5 @@
 use std::{
-    env,
     error::Error,
-    ffi::OsStr,
     fs,
     path::{Path, PathBuf},
     time::Instant,
@@ -9,17 +7,6 @@ use std::{
 
 use regex::Regex;
 use requestty::Answer;
-
-pub fn exe_name() -> String {
-    env::args()
-        .next()
-        .as_ref()
-        .map(Path::new)
-        .and_then(Path::file_name)
-        .and_then(OsStr::to_str)
-        .map(String::from)
-        .expect("Can't find executable name")
-}
 
 pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     let question = requestty::Question::confirm("anonymous")

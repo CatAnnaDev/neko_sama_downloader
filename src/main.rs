@@ -42,17 +42,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     header!("{}", static_data::HEADER);
     warn!("Please if you got an Error remember to update Google chrome and chromedriver");
-    let _ = ask_keyword(&mut new_args);
+    let mut processing_url = Option::from(None);
+    while processing_url.is_none() {
+        let _ = ask_keyword(&mut new_args);
+        processing_url = setup_search_or_download(&mut new_args).await?;
+        new_args.url_or_search_word = Scan::Search("".to_owned())
+    }
 
     info!("{}", new_args);
 
     thread_pool::max_thread_check(&mut new_args);
 
     let path = utils_check::confirm_chrome_ffmpeg_ublock_presence().await?;
-    let processing_url = setup_search_or_download(&mut new_args).await?;
+
     let client = Client::builder().build()?;
 
-    let _ = iter_over_url_found(&mut new_args, &path, processing_url, &client).await?;
+    let _ = iter_over_url_found(&mut new_args, &path, processing_url.unwrap(), &client).await?;
 
     Ok(())
 }
@@ -161,23 +166,31 @@ async fn iter_over_url_found(
 
 async fn setup_search_or_download(
     new_args: &mut Args,
-) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+) -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
-            let find =
-                search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
-            build_print_nb_ep_film(&find);
-            let answer = build_question(&find)?;
-            find_real_link_with_answer(&find, answer)
+            match search::search_over_json(&keyword, &new_args.language, &new_args.debug).await{
+                Ok(find) => {
+                    if find.len() != 0{
+                        build_print_nb_ep_film(&find);
+                        let answer = build_question(&find)?;
+                        Some(find_real_link_with_answer(&find, answer))
+                    }else { None }
+                }
+                Err(_) => {
+                    None
+                }
+            }
+
         }
 
         Scan::Download(ref url) => {
-            vec![ProcessingUrl {
+            Some(vec![ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
                 url: url.to_string(),
                 genre: "".to_string(),
-            }]
+            }])
         }
     };
 
@@ -253,9 +266,7 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
 
 fn ask_keyword(new_args: &mut Args) -> Result<(), Box<dyn Error>> {
     if new_args.url_or_search_word.is_empty() {
-        warn!("prefers use ./{} -h", utils_data::exe_name());
-        if let Ok(reply) =
-            utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
+        if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
             new_args.url_or_search_word = Scan::from_str(reply.as_string().unwrap().trim())?;
         }
