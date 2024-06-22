@@ -32,8 +32,8 @@ pub async fn search_over_json(
         &client,
         &format!("{}/animes-search-{}.json", base_url, edit_lang),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     let rep = resp.text().await?;
     let cleaned_name = clean_string(name);

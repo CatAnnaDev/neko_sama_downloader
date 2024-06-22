@@ -24,11 +24,11 @@ enum Job {
 }
 
 impl ThreadPool {
-    pub fn new(mut size: usize, capa: usize) -> ThreadPool {
+    pub fn new(mut size: usize, capacity: usize) -> ThreadPool {
         if size <= 0 {
             size = 1
         }
-        let queue = Arc::new(ArrayQueue::<Job>::new(capa));
+        let queue = Arc::new(ArrayQueue::<Job>::new(capacity));
         let mut workers = Vec::with_capacity(size);
         for _ in 0..size {
             workers.push(Worker::new(Arc::clone(&queue)));
@@ -37,8 +37,8 @@ impl ThreadPool {
     }
 
     pub fn execute<F>(&mut self, f: F)
-        where
-            F: FnOnce() + Send + 'static,
+    where
+        F: FnOnce() + Send + 'static,
     {
         let job = Job::Task(Box::new(f));
         let _ = &self.queue.push(job);

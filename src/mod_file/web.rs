@@ -10,7 +10,7 @@ use crate::{debug, warn};
 
 pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &bool) -> i16 {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-        let _ffmpeg = "ffmpeg";
+    let _ffmpeg = "ffmpeg";
 
     let time = Instant::now();
     let mut process = Command::new(_ffmpeg);

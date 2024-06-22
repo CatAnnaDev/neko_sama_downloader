@@ -1,22 +1,3 @@
-// chrome driver
-#[cfg(target_os = "macos")]
-#[cfg(target_arch = "x86_64")]
-pub const DRIVER_PATH: &str =
-    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-x64/chromedriver-mac-x64.zip";
-
-#[cfg(target_os = "macos")]
-#[cfg(target_arch = "arm")]
-pub const DRIVER_PATH: &str =
-    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/mac-arm64/chromedriver-mac-arm64.zip";
-
-#[cfg(target_os = "linux")]
-pub const DRIVER_PATH: &str =
-    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/linux64/chromedriver-linux64.zip";
-
-#[cfg(target_os = "windows")]
-pub const DRIVER_PATH: &str =
-    "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/120.0.6099.71/win64/chromedriver-win64.zip";
-
 // ublock from github for chrome driver
 pub const UBLOCK_PATH: &str =
     "https://github.com/PsykoDev/neko_sama_downloader/raw/main/utils/uBlock-Origin.crx";

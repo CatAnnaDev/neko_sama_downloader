@@ -4,7 +4,7 @@ use std::str::FromStr;
 use clap::{ArgAction, Parser};
 
 #[derive(Parser, Debug)]
-#[command(author = "PsykoDev", version, about, long_about = None)]
+#[command(author = "CatAnnaDev", version, about, long_about = None)]
 pub struct Args {
     #[arg(
         short = 's',
@@ -71,8 +71,8 @@ pub enum Scan {
 impl Scan {
     pub(crate) fn is_empty(&self) -> bool {
         match self {
-            Scan::Download(_) => { false }
-            Scan::Search(e) => { e.is_empty() }
+            Scan::Download(_) => false,
+            Scan::Search(e) => e.is_empty(),
         }
     }
 }
@@ -90,7 +90,6 @@ impl FromStr for Scan {
         }
     }
 }
-
 
 impl Display for Args {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

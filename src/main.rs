@@ -1,16 +1,19 @@
 #![feature(fs_try_exists)]
 
-use std::{error::Error, str::FromStr, sync::mpsc, time::{Duration, Instant}};
+use std::{
+    error::Error,
+    str::FromStr,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
-use requestty::{Answer, OnEsc, prompt_one, Question};
+use requestty::{prompt_one, Answer, OnEsc, Question};
 use reqwest::Client;
 use thirtyfour::WebDriver;
 
 use mod_file::{
-    {search, search::ProcessingUrl},
-    {utils_data, utils_data::time_to_human_time},
     chrome_spawn::ChromeChild,
     cmd_line_parser::{self, Args, Scan},
     process_part1::{self, add_ublock, connect_to_chrome_driver},
@@ -18,6 +21,8 @@ use mod_file::{
     thread_pool::{self, ThreadPool},
     utils_check::{self, AllPath},
     web,
+    {search, search::ProcessingUrl},
+    {utils_data, utils_data::time_to_human_time},
 };
 
 mod mod_file;
@@ -27,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
 
     header!("{}", static_data::HEADER);
-
+    warn!("Please if you got an Error remember to update Google chrome and chromedriver");
     let _ = ask_keyword(&mut new_args);
 
     info!("{}", new_args);
@@ -43,10 +48,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn start(url_test: &str, path: &AllPath, args: &mut Args, driver: WebDriver, client: &Client) -> Result<(), Box<dyn Error>> {
+async fn start(
+    url_test: &str,
+    path: &AllPath,
+    args: &mut Args,
+    driver: WebDriver,
+    client: &Client,
+) -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
-    let (save_path, good, error) = process_part1::scan_main(&driver, url_test, path, &client, args).await?;
+    let (save_path, good, error) =
+        process_part1::scan_main(&driver, url_test, path, &client, args).await?;
 
     process_part1::prevent_case_nothing_found_or_error(good, error, args);
 
@@ -86,7 +98,7 @@ async fn start(url_test: &str, path: &AllPath, args: &mut Args, driver: WebDrive
                 &ffmpeg,
                 &debug,
             ))
-                .unwrap_or(())
+            .unwrap_or(())
         })
     }
 
@@ -107,7 +119,12 @@ async fn start(url_test: &str, path: &AllPath, args: &mut Args, driver: WebDrive
     Ok(())
 }
 
-async fn iter_over_url_found(new_args: &mut Args, path: &AllPath, processing_url: Vec<ProcessingUrl>, client: &Client) -> Result<(), Box<dyn Error>> {
+async fn iter_over_url_found(
+    new_args: &mut Args,
+    path: &AllPath,
+    processing_url: Vec<ProcessingUrl>,
+    client: &Client,
+) -> Result<(), Box<dyn Error>> {
     time_it!("Global time:", {
         if new_args.debug {
             debug!("spawn chrome process");
@@ -122,8 +139,8 @@ async fn iter_over_url_found(new_args: &mut Args, path: &AllPath, processing_url
         for (index, x) in processing_url.iter().enumerate() {
             header!("Step {} / {}", index + 1, processing_url.len());
             info!("Process: {}", x.url);
-            let driver = connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
-
+            let driver =
+                connect_to_chrome_driver(&new_args, add_ublock(&new_args, &path)?, &x.url).await?;
             start(&x.url, &path, new_args, driver, client).await?;
         }
 
@@ -133,10 +150,13 @@ async fn iter_over_url_found(new_args: &mut Args, path: &AllPath, processing_url
     Ok(())
 }
 
-async fn setup_search_or_download(new_args: &mut Args) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+async fn setup_search_or_download(
+    new_args: &mut Args,
+) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
-            let find = search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
+            let find =
+                search::search_over_json(&keyword, &new_args.language, &new_args.debug).await?;
             build_print_nb_ep_film(&find);
             let answer = build_question(&find)?;
             find_real_link_with_answer(&find, answer)
@@ -213,19 +233,20 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
         .collect();
 
     header!(
-                "Seasons found: {} Episode found: {} ({}~ Go Total) Films found {} ({}~ Go Total)",
-                find.len(),
-                ep,
-                ep * 230 / 1024,
-                film,
-                film * 1300 / 1024
-            );
+        "Seasons found: {} Episode found: {} ({}~ Go Total) Films found {} ({}~ Go Total)",
+        find.len(),
+        ep,
+        ep * 230 / 1024,
+        film,
+        film * 1300 / 1024
+    );
 }
 
 fn ask_keyword(new_args: &mut Args) -> Result<(), Box<dyn Error>> {
     if new_args.url_or_search_word.is_empty() {
         warn!("prefers use ./{} -h", utils_data::exe_name());
-        if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
+        if let Ok(reply) =
+            utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
             new_args.url_or_search_word = Scan::from_str(reply.as_string().unwrap().trim())?;
         }

@@ -1,14 +1,15 @@
 use std::{
-    {fs, fs::File},
     env,
     error::Error,
     io::Write,
     path::PathBuf,
     process::exit,
+    {fs, fs::File},
 };
 
 use reqwest::Client;
 
+use crate::mod_file::chrome_parser::ChromeParse;
 use crate::{
     error, info, mod_file::search::ProcessingUrl, mod_file::static_data, mod_file::utils_data,
 };
@@ -37,15 +38,15 @@ pub fn check() -> Result<AllPath, Box<dyn Error>> {
 
     // chrome driver
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-        let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
+    let chrome_path = extract_path.join(PathBuf::from("chromedriver"));
     #[cfg(target_os = "windows")]
-        let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
+    let chrome_path = extract_path.join(PathBuf::from("chromedriver.exe"));
 
     // ffmpeg
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
+    let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg"));
     #[cfg(target_os = "windows")]
-        let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
+    let ffmpeg_path = extract_path.join(PathBuf::from("ffmpeg.exe"));
 
     // ublock
     let u_block_path = extract_path.join(PathBuf::from("uBlock-Origin.crx"));
@@ -102,8 +103,23 @@ pub async fn confirm_chrome_ffmpeg_ublock_presence() -> Result<AllPath, Box<dyn 
     }
 
     if !ublock_check {
-        download(static_data::UBLOCK_PATH, &path.ublock_destination).await.expect("Erreur lors du téléchargement de uBlock Origin.");
+        download(static_data::UBLOCK_PATH, &path.ublock_destination)
+            .await
+            .expect("Erreur lors du téléchargement de uBlock Origin.");
     }
+
+    let chrome_url = match env::consts::OS {
+        "linux" => get_chrome_driver(Platform::Linux).await?,
+        "macos" => {
+            if cfg!(target_arch = "arm") {
+                get_chrome_driver(Platform::MacArm).await?
+            } else {
+                get_chrome_driver(Platform::MacX64).await?
+            }
+        }
+        "windows" => get_chrome_driver(Platform::Win64).await?,
+        _ => get_chrome_driver(Platform::Win64).await?,
+    };
 
     match ffmpeg_check && chrome_check && ublock_check {
         true => Ok(path),
@@ -119,15 +135,16 @@ pub async fn confirm_chrome_ffmpeg_ublock_presence() -> Result<AllPath, Box<dyn 
                 error!(
                     "Please download chrome wed driver then extract {} in utils folder here:\n{}",
                     path.chrome_path.display(),
-                    static_data::DRIVER_PATH
+                    chrome_url
                 );
                 exit(0);
             } else {
                 error!(
                     "Please download chrome wed driver then extract {} in utils folder here:\n{}",
                     path.chrome_path.display(),
-                    static_data::DRIVER_PATH
+                    chrome_url
                 );
+
                 println!();
                 error!(
                     "Please download then extract {} ffmpeg here:\n{}",
@@ -138,6 +155,48 @@ pub async fn confirm_chrome_ffmpeg_ublock_presence() -> Result<AllPath, Box<dyn 
             }
         }
     }
+}
+
+enum Platform {
+    Linux,
+    MacX64,
+    MacArm,
+    Win64,
+}
+
+async fn get_chrome_driver(pl: Platform) -> Result<String, Box<dyn Error>> {
+    let mut retu = String::new();
+    let reps = Client::new().get("https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json").send().await?;
+    let parse = serde_json::from_str::<ChromeParse>(&*reps.text().await?)?;
+    for x in parse.channels.stable.downloads.chromedriver {
+        retu = match pl {
+            Platform::Linux => {
+                match &*x.platform {
+                    "linux64" => x.url,
+                    _ => retu
+                }
+            }
+            Platform::MacX64 => {
+                match &*x.platform {
+                    "mac-x64" => x.url,
+                    _ => retu
+                }
+            }
+            Platform::MacArm => {
+                match &*x.platform {
+                    "mac-arm64" => x.url,
+                    _ => retu
+                }
+            }
+            Platform::Win64 => {
+                match &*x.platform {
+                    "win64" => x.url,
+                    _ => retu
+                }
+            }
+        }
+    }
+    Ok(retu)
 }
 
 pub async fn download(url: &str, destination: &PathBuf) -> Result<(), Box<dyn Error>> {

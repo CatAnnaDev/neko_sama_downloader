@@ -1,3 +1,4 @@
+mod chrome_parser;
 pub(crate) mod chrome_spawn;
 pub(crate) mod cmd_line_parser;
 pub(crate) mod html_parser;
