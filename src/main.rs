@@ -18,6 +18,8 @@ use neko_process::process::{self, add_ublock, connect_to_chrome_driver};
 use crate::chrome::chrome_spawn::ChromeChild;
 use crate::cmd_arg::cmd_line_parser;
 use crate::cmd_arg::cmd_line_parser::{Args, Scan};
+use crate::neko_process::html_parser::enter_iframe_wait_jwplayer;
+use crate::neko_process::process::build_path_to_save_final_video;
 use crate::search_engine::search;
 use crate::search_engine::search::ProcessingUrl;
 use crate::thread::thread_pool;
@@ -83,7 +85,16 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
     -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
-    let (save_path, good, error) = process::scan_main(&driver, url_test, main_arg).await?;
+    let all_url_found = process::scan_main(&driver, url_test, main_arg).await?;
+
+    let mut save_path = String::new();
+    // make final path to save
+    build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg).await?;
+
+    // iter overs all urls found
+    let (good, error) = enter_iframe_wait_jwplayer(&driver, all_url_found, main_arg).await?;
+
+    info!("total found: {}", good);
 
     process::prevent_case_nothing_found_or_error(good, error, main_arg);
 
@@ -163,9 +174,7 @@ async fn iter_over_url_found(main_arg: &mut MainArg, )
         for (index, x) in main_arg.processing_url.iter().enumerate() {
             header!("Step {} / {}", index + 1, main_arg.processing_url.len());
             info!("Process: {}", x.url);
-            let driver = connect_to_chrome_driver(&main_arg, add_ublock(&main_arg)?, &x.url).await?;
-
-            start(&x.url, driver, &main_arg).await?;
+            start(&x.url, connect_to_chrome_driver(&main_arg, add_ublock(&main_arg)?, &x.url).await?, &main_arg).await?;
         }
 
         child.chrome.kill()?;

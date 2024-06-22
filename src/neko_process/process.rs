@@ -11,29 +11,19 @@ use thirtyfour::{ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 use crate::{debug, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
 use crate::neko_process::{html_parser, html_parser::get_base_name_direct_url};
-use crate::neko_process::html_parser::enter_iframe_wait_jwplayer;
 use crate::utils::utils_check::AllPath;
 use crate::utils::utils_data;
 use crate::utils::utils_data::ask_something;
 use crate::vlc::vlc_playlist_builder;
 
 pub async fn scan_main(driver: &WebDriver, url_test: &str, main_arg: &MainArg)
-    -> Result<(String, usize, usize), Box<dyn Error>> {
+    -> Result<Vec<String>, Box<dyn Error>> {
     info!("Scan Main Page");
-    
-    // found all urls 
+
+    // found all urls
     let all_url_found = html_parser::recursive_find_url(&driver, url_test, main_arg).await?;
 
-    let mut save_path = String::new();
-    // make final path to save
-    build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg).await?;
-    
-    // iter overs all urls found 
-    let (good, error) = enter_iframe_wait_jwplayer(&driver, all_url_found, main_arg).await?;
-
-    info!("total found: {}", good);
-        
-    Ok((save_path, good, error))
+    Ok(all_url_found)
 }
 
 pub fn prevent_case_nothing_found_or_error(good: usize, error: usize, args: &MainArg) {
@@ -83,7 +73,7 @@ pub fn add_ublock(args: &MainArg)
     Ok(prefs)
 }
 
-pub(crate) fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, )
+pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String, )
     -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
     let mut save_path_vlc = vec![];
 
@@ -148,7 +138,7 @@ pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities,
     Ok(driver)
 }
 
-async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg)
+pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg)
     -> Result<(), Box<dyn Error>> {
     fs::create_dir_all(&main_arg.path.tmp_dl)?;
 
