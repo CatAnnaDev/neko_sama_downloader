@@ -14,18 +14,28 @@ use reqwest::Client;
 use thirtyfour::WebDriver;
 
 use mod_file::{
-    chrome_spawn::ChromeChild,
-    cmd_line_parser::{self, Args, Scan},
-    process_part1::{self, add_ublock, connect_to_chrome_driver},
-    static_data,
-    thread_pool::{self, ThreadPool},
-    utils_check::{self, AllPath},
-    web,
-    {search, search::ProcessingUrl},
-    {utils_data, utils_data::time_to_human_time},
+    process::{self, add_ublock, connect_to_chrome_driver},
 };
+use crate::chrome::chrome_spawn::ChromeChild;
+use crate::cmd_arg::cmd_line_parser;
+use crate::cmd_arg::cmd_line_parser::{Args, Scan};
+use crate::search_engine::search;
+use crate::search_engine::search::ProcessingUrl;
+use crate::thread::thread_pool;
+use crate::thread::thread_pool::ThreadPool;
+use crate::utils::{static_data, utils_check, utils_data};
+use crate::utils::utils_check::AllPath;
+use crate::utils_data::time_to_human_time;
+use crate::web_client::web;
 
 mod mod_file;
+mod chrome;
+mod vlc;
+mod utils;
+mod thread;
+mod cmd_arg;
+mod search_engine;
+mod web_client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -58,11 +68,11 @@ async fn start(
     let before = Instant::now();
 
     let (save_path, good, error) =
-        process_part1::scan_main(&driver, url_test, path, &client, args).await?;
+        process::scan_main(&driver, url_test, path, &client, args).await?;
 
-    process_part1::prevent_case_nothing_found_or_error(good, error, args);
+    process::prevent_case_nothing_found_or_error(good, error, args);
 
-    process_part1::shutdown_chrome(args, &driver).await;
+    process::shutdown_chrome(args, &driver).await;
 
     if args.thread > good {
         warn!("update thread count from {} to {good}", args.thread);
@@ -70,7 +80,7 @@ async fn start(
     }
 
     let (mut vec_m3u8_path_folder, vec_save_path_vlc) =
-        process_part1::build_vec_m3u8_folder_path(path, save_path)?;
+        process::build_vec_m3u8_folder_path(path, save_path)?;
 
     utils_data::custom_sort(&mut vec_m3u8_path_folder);
 
@@ -111,10 +121,10 @@ async fn start(
     progress_bar.finish();
 
     if good >= 2 && args.vlc_playlist {
-        process_part1::build_vlc_playlist(vec_save_path_vlc)?;
+        process::build_vlc_playlist(vec_save_path_vlc)?;
     }
 
-    process_part1::end_print(before, path, good, error);
+    process::end_print(before, path, good, error);
 
     Ok(())
 }
