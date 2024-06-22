@@ -13,7 +13,7 @@ use requestty::{prompt_one, Answer, OnEsc, Question};
 use reqwest::Client;
 use thirtyfour::WebDriver;
 
-use mod_file::{
+use neko_process::{
     process::{self, add_ublock, connect_to_chrome_driver},
 };
 use crate::chrome::chrome_spawn::ChromeChild;
@@ -28,7 +28,7 @@ use crate::utils::utils_check::AllPath;
 use crate::utils_data::time_to_human_time;
 use crate::web_client::web;
 
-mod mod_file;
+mod neko_process;
 mod chrome;
 mod vlc;
 mod utils;
