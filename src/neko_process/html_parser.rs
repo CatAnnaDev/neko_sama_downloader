@@ -10,7 +10,7 @@ use crate::utils::utils_data;
 use crate::web_client::web;
 
 pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &MainArg)
-    -> Result<Vec<String>, Box<dyn Error>> {
+                                -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_l = vec![];
 
     // direct url
@@ -26,6 +26,7 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &
     // only one page
     if n.len() == 0 {
         all_l.extend(get_all_link_base_href(&driver, &main_arg.new_args).await?);
+        return Ok(all_l);
     }
 
     // iter over all page possible
@@ -34,8 +35,8 @@ pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &
     Ok(all_l)
 }
 
-async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, )
-    -> Result<Vec<String>, Box<dyn Error>> {
+async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>)
+                   -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_links = vec![];
     while n.len() != 0 {
         all_links.extend(get_all_link_base_href(&driver, args).await?);
@@ -63,24 +64,9 @@ async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>, )
     Ok(all_links)
 }
 
-pub async fn get_base_name_direct_url(driver: &WebDriver)
-    -> String {
-    let class = driver
-        .find(By::XPath(
-            r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#,
-        ))
-        .await
-        .expect("Can't get real name direct url");
 
-    let path = class
-        .inner_html()
-        .await
-        .expect("Can't get real name direct innerhtml");
-    path
-}
-
-async fn get_all_link_base_href(driver: &WebDriver, args: &Args, )
-    -> Result<Vec<String>, Box<dyn Error>> {
+async fn get_all_link_base_href(driver: &WebDriver, args: &Args)
+                                -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let mut play_class = driver.find_all(By::ClassName("play")).await?;
 
@@ -100,7 +86,7 @@ async fn get_all_link_base_href(driver: &WebDriver, args: &Args, )
 }
 
 pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main_arg: &MainArg)
-    -> Result<(usize, usize), Box<dyn Error>> {
+                                        -> Result<(usize, usize), Box<dyn Error>> {
     let mut nb_found = 0;
     let mut nb_error = 0;
 
@@ -144,8 +130,8 @@ pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, 
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg )
-    -> Result<(usize, usize), Box<dyn Error>> {
+async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg)
+                           -> Result<(usize, usize), Box<dyn Error>> {
     let name = utils_data::edit_for_windows_compatibility(
         &driver.title().await?.replace(" - Neko Sama", ""),
     );
@@ -181,8 +167,8 @@ async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &We
     Ok((nb_found, nb_error))
 }
 
-async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg )
-    -> Result<(), Box<dyn Error>> {
+async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg)
+                                -> Result<(), Box<dyn Error>> {
     match web::web_request(&main_arg.client, &url).await {
         Ok(body) => match body.status() {
             StatusCode::OK => {
@@ -223,8 +209,8 @@ async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg )
     Ok(())
 }
 
-async fn test_resolution(parsed: Playlist,  main_arg: &MainArg )
-    -> String {
+async fn test_resolution(parsed: Playlist, main_arg: &MainArg)
+                         -> String {
     let mut _good_url = String::new();
     match parsed {
         Playlist::MasterPlaylist(pl) => {

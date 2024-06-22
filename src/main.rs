@@ -69,7 +69,7 @@ async fn main()
 
     let client = Client::builder().build()?;
 
-    let mut arg = MainArg{
+    let mut arg = MainArg {
         new_args,
         path,
         processing_url: processing_url.unwrap(),
@@ -82,7 +82,7 @@ async fn main()
 }
 
 async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
-    -> Result<(), Box<dyn Error>> {
+               -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
     let all_url_found = process::scan_main(&driver, url_test, main_arg).await?;
@@ -155,9 +155,8 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
     Ok(())
 }
 
-async fn iter_over_url_found(main_arg: &mut MainArg, )
-    -> Result<(), Box<dyn Error>> {
-
+async fn iter_over_url_found(main_arg: &mut MainArg)
+                             -> Result<(), Box<dyn Error>> {
     time_it!("Global time:", {
 
         if main_arg.new_args.debug {
@@ -183,23 +182,22 @@ async fn iter_over_url_found(main_arg: &mut MainArg, )
     Ok(())
 }
 
-async fn setup_search_or_download(new_args: &mut Args, )
-    -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
+async fn setup_search_or_download(new_args: &mut Args)
+                                  -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
-            match search::search_over_json(&keyword, &new_args.language, &new_args.debug).await{
+            match search::search_over_json(&keyword, &new_args.language, &new_args.debug).await {
                 Ok(find) => {
-                    if find.len() != 0{
+                    if find.len() != 0 {
                         build_print_nb_ep_film(&find);
                         let answer = build_question(&find)?;
                         Some(find_real_link_with_answer(&find, answer))
-                    }else { None }
+                    } else { None }
                 }
                 Err(_) => {
                     None
                 }
             }
-
         }
 
         Scan::Download(ref url) => {
@@ -216,7 +214,7 @@ async fn setup_search_or_download(new_args: &mut Args, )
 }
 
 fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer)
-    -> Vec<ProcessingUrl> {
+                              -> Vec<ProcessingUrl> {
     answer
         .try_into_list_items()
         .unwrap()
@@ -226,7 +224,7 @@ fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer)
 }
 
 fn build_question(find: &Vec<ProcessingUrl>)
-    -> requestty::Result<Answer> {
+                  -> requestty::Result<Answer> {
     let multi_select = Question::multi_select("Season")
         .message("What seasons do you want?")
         .choices(
@@ -285,7 +283,7 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
 }
 
 fn ask_keyword(new_args: &mut Args)
-    -> Result<(), Box<dyn Error>> {
+               -> Result<(), Box<dyn Error>> {
     if new_args.url_or_search_word.is_empty() {
         if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
