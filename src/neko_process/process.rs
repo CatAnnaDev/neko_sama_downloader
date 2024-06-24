@@ -5,8 +5,6 @@ use std::{
     process::exit,
     time::{Duration, Instant},
 };
-use std::fs::try_exists;
-
 use thirtyfour::{By, ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
 
 use crate::{debug, error, info, MainArg, warn};
@@ -148,7 +146,7 @@ pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &We
 
     let season_path = main_arg.path.tmp_dl.parent().unwrap().join(save_path);
     if main_arg.new_args.ignore_alert_missing_episode {
-        if try_exists(season_path.clone()).unwrap() {
+        if tokio::fs::try_exists(season_path.clone()).await.unwrap() {
             warn!("Path already exist\n{}", season_path.display());
             if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
                 if e.as_bool().unwrap() {

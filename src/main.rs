@@ -1,5 +1,3 @@
-#![feature(fs_try_exists)]
-
 use std::{
     error::Error,
     str::FromStr,
