@@ -1,24 +1,27 @@
 use std::{
     path::PathBuf,
-    process::{Command, Stdio},
+    process::Stdio,
     time::Instant,
 };
+use std::time::Duration;
+use indicatif::{MultiProgress, MultiProgressAlignment, ProgressBar, ProgressStyle};
+use m3u8_rs::MediaPlaylist;
+use std::io::Read;
+use std::sync::Arc;
 
 use reqwest::{Client, Response};
+use tokio::io::AsyncBufReadExt;
 
-use crate::{debug, warn};
-
-pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &bool) -> i16 {
+pub async fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, mp: &Arc<MultiProgress>) {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     let _ffmpeg = "ffmpeg";
 
     let time = Instant::now();
-    let mut process = Command::new(_ffmpeg);
-    let args = [
+    let mut process = tokio::process::Command::new(_ffmpeg).args(&[
         "-protocol_whitelist",
         "file,http,https,tcp,tls,crypto",
         "-i",
-        path,
+        &path,
         "-bsf:a",
         "aac_adtstoasc",
         "-c:v",
@@ -26,28 +29,52 @@ pub fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, debug: &b
         "-c:a",
         "copy",
         &name,
-    ];
-    if *debug {
-        debug!("save path: {} output name: {}", path, name);
-        process
-            .args(args)
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Can't start ffmpeg")
-            .wait()
-            .expect("Error wait ffmpeg");
-    } else {
-        process.args(args).output().expect("Can't start ffmpeg");
-    }
+    ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+
 
     let end = time.elapsed().as_secs();
 
     if end < 1 {
-        warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
+       // warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
     }
 
-    // thread return 1 via channel to update progress bar
-    1
+    let mut file = std::fs::File::open(&path).unwrap();
+    let mut bytes: Vec<u8> = Vec::new();
+    file.read_to_end(&mut bytes).unwrap();
+
+    let parsed = m3u8_rs::parse_media_playlist_res(&bytes).unwrap();
+
+    let size = match parsed {
+        MediaPlaylist { segments, .. } => segments.len()
+    };
+
+    let progress_bar = ProgressBar::new(size as u64);
+    mp.add(progress_bar.clone());
+    mp.set_alignment(MultiProgressAlignment::Bottom);
+    progress_bar.set_message(name.split("/").last().unwrap().to_string());
+    progress_bar.enable_steady_tick(Duration::from_secs(1));
+
+    progress_bar.set_style(
+        ProgressStyle::default_bar().template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta}) ({msg})").unwrap().progress_chars("$>-"),
+    );
+
+    let s = tokio::io::BufReader::new(process.stderr.take().unwrap());
+    let mut lines = s.lines();
+    while let Ok(Some(l)) = lines.next_line().await {
+        if l.contains(".ts") {
+            progress_bar.inc(1);
+        }
+    }
+
+    if process.wait().await.unwrap().success() {
+    } else {
+    }
+
+    progress_bar.finish();
 }
 
 pub async fn web_request(client: &Client, url: &str) -> Result<Response, reqwest::Error> {

@@ -3,15 +3,16 @@
 use std::{
     error::Error,
     str::FromStr,
-    sync::mpsc,
     time::{Duration, Instant},
 };
+use std::sync::Arc;
 
 use clap::Parser;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::MultiProgress;
 use requestty::{Answer, OnEsc, prompt_one, Question};
 use reqwest::Client;
 use thirtyfour::WebDriver;
+use tokio::sync::Semaphore;
 
 use neko_process::process::{self, add_ublock, connect_to_chrome_driver};
 
@@ -23,7 +24,6 @@ use crate::neko_process::process::build_path_to_save_final_video;
 use crate::search_engine::search;
 use crate::search_engine::search::ProcessingUrl;
 use crate::thread::thread_pool;
-use crate::thread::thread_pool::ThreadPool;
 use crate::utils::{static_data, utils_check, utils_data};
 use crate::utils::utils_check::AllPath;
 use crate::utils_data::time_to_human_time;
@@ -98,7 +98,7 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
 
     process::prevent_case_nothing_found_or_error(good, error, main_arg);
 
-    process::shutdown_chrome(main_arg, &driver).await;
+    process::shutdown_chrome(main_arg, driver).await;
 
     let mut new_thread = main_arg.new_args.thread;
     if new_thread > good {
@@ -112,39 +112,32 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
 
     info!("Start Processing with {} threads", new_thread);
 
-    let progress_bar = ProgressBar::new(good as u64);
-    progress_bar.enable_steady_tick(Duration::from_secs(1));
 
-    progress_bar.set_style(
-        ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta})")?
-            .progress_chars("$>-"),
-    );
+    //let (tx, mut rx) = tokio::sync::mpsc::channel(vec_m3u8_path_folder.len());
+    let semaphore = Arc::new(Semaphore::new(new_thread));
 
-    let (tx, rx) = mpsc::channel();
-    let mut pool = ThreadPool::new(new_thread, good);
-    for (output_path, name) in vec_m3u8_path_folder {
-        let tx = tx.clone();
-        let ffmpeg = main_arg.path.ffmpeg_path.clone();
-        let debug = main_arg.new_args.debug.clone();
-        pool.execute(move || {
-            tx.send(web::download_build_video(
-                &output_path.to_str().unwrap(),
-                name.to_str().unwrap(),
-                &ffmpeg,
-                &debug,
-            ))
-                .unwrap_or(())
-        })
-    }
+    let mp = Arc::new(MultiProgress::new());
 
-    drop(tx);
+        let handles = vec_m3u8_path_folder.into_iter().map(|(output_path, name)| {
+            let ffmpeg = main_arg.path.ffmpeg_path.clone();
+            let mp = Arc::clone(&mp);
+            let sema = Arc::clone(&semaphore);
 
-    for _ in rx.iter().take(good) {
-        progress_bar.inc(1);
-    }
+            tokio::spawn(async move {
+                let permit = sema.acquire_owned().await.unwrap();
 
-    progress_bar.finish();
+                web::download_build_video(
+                    &output_path.to_str().unwrap(),
+                    name.to_str().unwrap(),
+                    &ffmpeg,
+                    &mp
+                ).await;
+
+                drop(permit);
+            })
+        }).collect::<Vec<_>>();
+
+        futures::future::join_all(handles).await;
 
     if good >= 2 && main_arg.new_args.vlc_playlist {
         process::build_vlc_playlist(vec_save_path_vlc)?;

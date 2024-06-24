@@ -841,12 +841,13 @@ dependencies = [
 
 [[package]]
 name = "neko_dl"
-version = "0.13.3"
+version = "0.14.0"
 dependencies = [
  "clap",
  "crossbeam",
  "crossbeam-channel",
  "ctrlc",
+ "futures",
  "http",
  "indicatif",
  "m3u8-rs",
@@ -1764,7 +1765,9 @@ dependencies = [
  "libc",
  "mio",
  "num_cpus",
+ "parking_lot",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.48.0",

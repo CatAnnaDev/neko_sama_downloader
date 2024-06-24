@@ -1,6 +1,6 @@
 [package]
 name = "neko_dl"
-version = "0.13.3"
+version = "0.14.0"
 edition = "2021"
 homepage = "https://github.com/CatAnnaDev/neko_sama_downloader"
 repository = "https://github.com/CatAnnaDev/neko_sama_downloader"
@@ -36,7 +36,7 @@ serde_derive = "1.0.203"
 crossbeam = "0.8.4"
 regex = "1.10.5"
 quick-xml = "0.33.0"
-tokio = "1.38.0"
+tokio = { version = "1.38.0", features = ["full"] }
 thirtyfour = "0.33.0-alpha.2"
 ctrlc = "3.4.4"
 strsim = "0.11.1"
@@ -46,6 +46,7 @@ requestty = "0.5.0"
 m3u8-rs = "6.0.0"
 nom = "8.0.0-alpha2"
 http = "1.1.0"
+futures = "0.3.30"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
