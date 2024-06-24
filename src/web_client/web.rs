@@ -45,30 +45,27 @@ pub async fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, mp:
     let mut file = std::fs::File::open(&path).unwrap();
     let mut bytes: Vec<u8> = Vec::new();
     file.read_to_end(&mut bytes).unwrap();
-
     let parsed = m3u8_rs::parse_media_playlist_res(&bytes).unwrap();
-
     let size = match parsed {
         MediaPlaylist { segments, .. } => segments.len()
     };
 
-    let progress_bar = ProgressBar::new(size as u64);
-    mp.add(progress_bar.clone());
     mp.set_alignment(MultiProgressAlignment::Bottom);
-    progress_bar.set_message(name.split("/").last().unwrap().to_string());
+    let progress_bar = mp.add(ProgressBar::new(size as u64));
     progress_bar.enable_steady_tick(Duration::from_secs(1));
-
+    progress_bar.set_message(name.split("/").last().unwrap().to_string());
     progress_bar.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}] {bar:60.cyan/blue} {pos}/{len} ({eta}) ({msg})").unwrap().progress_chars("$>-"),
+        ProgressStyle::default_bar().template("[{elapsed_precise}] |{wide_bar:.cyan/blue}| {pos}/{len} ({eta}) ({msg})").unwrap().progress_chars("=> "),
     );
 
     let s = tokio::io::BufReader::new(process.stderr.take().unwrap());
     let mut lines = s.lines();
     while let Ok(Some(l)) = lines.next_line().await {
-        if l.contains(".ts") {
+        if l.contains(".ts") && l.contains("Opening") {
             progress_bar.inc(1);
         }
     }
+
 
     if process.wait().await.unwrap().success() {
     } else {

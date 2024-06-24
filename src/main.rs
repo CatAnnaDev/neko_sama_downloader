@@ -140,7 +140,7 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
     if good >= 2 && main_arg.new_args.vlc_playlist {
         process::build_vlc_playlist(vec_save_path_vlc)?;
     }
-
+    //mp.clear().unwrap();
     process::end_print(before, &main_arg.path, good, error);
 
     Ok(())
