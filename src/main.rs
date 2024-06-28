@@ -195,6 +195,7 @@ async fn setup_search_or_download(new_args: &mut Args)
             Some(vec![ProcessingUrl {
                 name: "".to_string(),
                 ep: "".to_string(),
+                _description: "".to_string(),
                 url: url.to_string(),
                 genre: "".to_string(),
             }])

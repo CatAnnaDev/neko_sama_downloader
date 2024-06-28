@@ -10,6 +10,7 @@ use crate::web_client::web;
 pub struct ProcessingUrl {
     pub name: String,
     pub ep: String,
+    pub _description: String,
     pub url: String,
     pub genre: String,
 }
@@ -42,20 +43,23 @@ pub async fn search_over_json(
 
     for x in v {
         let cleaned_title = clean_string(&x.title);
+        let cleaned_description = clean_string(&x.others);
 
-        let levenshtein_distance = strsim::levenshtein(&cleaned_name, &cleaned_title) as f64;
+        let levenshtein_distance = levenshtein_distance(&cleaned_name, &cleaned_title) as f64;
         let max_length = cleaned_name.len().max(cleaned_title.len()) as f64;
         let levenshtein_similarity = 1.0 - levenshtein_distance / max_length;
 
-        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.8
-            || levenshtein_similarity > 0.8
+        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.7
+            || levenshtein_similarity > 0.7
             || cleaned_title.contains(&cleaned_name)
+            || cleaned_description.contains(&cleaned_name)
         {
             let x = ProcessingUrl {
                 name: x.title,
                 ep: x.nb_eps,
+                _description: x.others,
                 url: x.url,
-                genre: x.genres.join(", ").replace("c0m1dy", "comedy"),
+                genre: x.genres.join(", "),
             };
             if *debug {
                 debug!("Search engine {:#?}", x);
@@ -75,6 +79,33 @@ fn clean_string(s: &str) -> String {
         .filter(|&c| c.is_alphanumeric() || c.is_whitespace())
         .collect::<String>()
         .to_lowercase()
+}
+
+fn levenshtein_distance(word1: &str, word2: &str) -> usize {
+    let w1 = word1.chars().collect::<Vec<_>>();
+    let w2 = word2.chars().collect::<Vec<_>>();
+
+    let word1_length = w1.len() + 1;
+    let word2_length = w2.len() + 1;
+
+    let mut matrix = vec![vec![0; word1_length]; word2_length];
+
+    for i in 1..word1_length { matrix[0][i] = i; }
+    for j in 1..word2_length { matrix[j][0] = j; }
+
+    for j in 1..word2_length {
+        for i in 1..word1_length {
+            let x: usize = if w1[i-1] == w2[j-1] {
+                matrix[j-1][i-1]
+            } else {
+                1 + std::cmp::min(
+                    std::cmp::min(matrix[j][i-1], matrix[j-1][i])
+                    , matrix[j-1][i-1])
+            };
+            matrix[j][i] = x;
+        }
+    }
+    matrix[word2_length-1][word1_length-1]
 }
 
 fn jaccard_similarity(s1: &str, s2: &str) -> f64 {

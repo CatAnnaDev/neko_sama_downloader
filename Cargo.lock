@@ -841,7 +841,7 @@ dependencies = [
 
 [[package]]
 name = "neko_dl"
-version = "0.14.0"
+version = "0.14.2"
 dependencies = [
  "clap",
  "crossbeam",
@@ -859,7 +859,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "strsim",
  "thirtyfour",
  "tokio",
  "winreg",
@@ -1100,9 +1099,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.33.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ca7dd09b5f4a9029c35e323b086d0a68acdc673317b9c4d002c6f1d4a7278c6"
+checksum = "6f24d770aeca0eacb81ac29dfbc55ebcc09312fdd1f8bbecdc7e4a84e000e3b4"
 dependencies = [
  "memchr",
 ]
@@ -1457,9 +1456,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.117"
+version = "1.0.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "455182ea6142b14f93f4bc5320a2b31c1f266b66a4a5c858b013302a5d8cbfc3"
+checksum = "d947f6b3163d8857ea16c4fa0dd4840d52f3041039a85decd46867eb1abef2e4"
 dependencies = [
  "indexmap",
  "itoa",
