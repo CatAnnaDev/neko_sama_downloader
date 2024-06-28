@@ -94,7 +94,6 @@ fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_thresh
             false;
         }
     }
-
     matched >= (matched_threshold * query_words.len() as f64)
 }
 
