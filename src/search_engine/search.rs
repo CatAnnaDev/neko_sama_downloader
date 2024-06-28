@@ -94,9 +94,7 @@ fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_thresh
             false;
         }
     }
-    if matched != 0.0 {
-        println!("{matched} >= {} || {}", matched_threshold * query_words.len() as f64, levenshtein_threshold * query_words.len() as f64);
-    }
+
     matched >= (matched_threshold * query_words.len() as f64)
 }
 
