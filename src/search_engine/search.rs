@@ -15,46 +15,39 @@ pub struct ProcessingUrl {
     pub genre: String,
 }
 
-pub async fn search_over_json(
-    name: &str,
-    lang: &str,
-    debug: &bool,
-) -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+pub async fn search_over_json(name: &str, lang: &str, debug: &bool, )
+    -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+
     let mut edit_lang = lang.to_lowercase();
+
     if edit_lang != "vf".to_string() && edit_lang != "vostfr".to_string() {
         warn!("\"{edit_lang}\" doesn't exist, replaced by \"vf\" automatically, use only \"vf\" or \"vostfr\"");
         edit_lang = "vf".to_string();
     }
 
     let client = Client::builder().build()?;
-    let base_url = "https://neko-sama.fr";
-    let mut find = vec![];
+
     let resp = web::web_request(
         &client,
-        &format!("{}/animes-search-{}.json", base_url, edit_lang),
+        &format!("https://neko-sama.fr/animes-search-{}.json", edit_lang),
     )
         .await
         .unwrap();
 
-    let rep = resp.text().await?;
+    let response_text = resp.text().await?;
+    let parsed_jon = serde_json::from_str::<Root>(&response_text)?;
+
     let cleaned_name = clean_string(name);
 
-    let v = serde_json::from_str::<Root>(&rep)?;
 
-    for x in v {
+    let mut find = vec![];
+    for x in parsed_jon {
         let cleaned_title = clean_string(&x.title);
         let cleaned_description = clean_string(&x.others);
 
-        let levenshtein_distance = levenshtein_distance(&cleaned_name, &cleaned_title) as f64;
-        let max_length = cleaned_name.len().max(cleaned_title.len()) as f64;
-        let levenshtein_similarity = 1.0 - levenshtein_distance / max_length;
-
-        if jaccard_similarity(&cleaned_name, &cleaned_title) > 0.7
-            || levenshtein_similarity > 0.7
-            || cleaned_title.contains(&cleaned_name)
-            || cleaned_description.contains(&cleaned_name)
+        if is_match(&cleaned_title, &cleaned_name, 0.6, 0.6) || cleaned_description.contains(&cleaned_name)
         {
-            let x = ProcessingUrl {
+            let p_url = ProcessingUrl {
                 name: x.title,
                 ep: x.nb_eps,
                 _description: x.others,
@@ -62,9 +55,9 @@ pub async fn search_over_json(
                 genre: x.genres.join(", "),
             };
             if *debug {
-                debug!("Search engine {:#?}", x);
+                debug!("Search engine {:#?}", p_url);
             }
-            find.push(x);
+            find.push(p_url);
         }
     }
     if find.len() == 0 {
@@ -81,7 +74,33 @@ fn clean_string(s: &str) -> String {
         .to_lowercase()
 }
 
-fn levenshtein_distance(word1: &str, word2: &str) -> usize {
+fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_threshold: f64) -> bool {
+    let input = input.to_lowercase();
+    let query = query.to_lowercase();
+
+    if input.contains(&query) {
+        return true;
+    }
+
+    let query_words: Vec<&str> = query.split_whitespace().collect();
+    let input_words: Vec<&str> = input.split_whitespace().collect();
+
+    let mut matched = 0f64;
+
+    for query_word in &query_words {
+        if input_words.iter().any(|&word| levenshtein(word, query_word) <= ((1.0 - levenshtein_threshold) * word.len() as f64) as usize )
+        {
+            matched+=1.0;
+            false;
+        }
+    }
+    if matched != 0.0 {
+        println!("{matched} >= {} || {}", matched_threshold * query_words.len() as f64, levenshtein_threshold * query_words.len() as f64);
+    }
+    matched >= (matched_threshold * query_words.len() as f64)
+}
+
+fn levenshtein(word1: &str, word2: &str) -> usize {
     let w1 = word1.chars().collect::<Vec<_>>();
     let w2 = word2.chars().collect::<Vec<_>>();
 
@@ -108,13 +127,6 @@ fn levenshtein_distance(word1: &str, word2: &str) -> usize {
     matrix[word2_length-1][word1_length-1]
 }
 
-fn jaccard_similarity(s1: &str, s2: &str) -> f64 {
-    let set1: std::collections::HashSet<_> = s1.chars().collect();
-    let set2: std::collections::HashSet<_> = s2.chars().collect();
-    let intersection_size = set1.intersection(&set2).count() as f64;
-    let union_size = set1.union(&set2).count() as f64;
-    intersection_size / union_size
-}
 
 pub type Root = Vec<Season>;
 
