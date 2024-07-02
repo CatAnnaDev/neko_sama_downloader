@@ -30,6 +30,7 @@ if you got an error about chrome, remember to update chrome driver AND google ch
 - (Vlc Playlist) is based on path if you move all video download the playlist is broken
 - (ublock origin) can't be disabled, it's a better way to stay safe
 - (search engine) is not perfect but work
+- for linux / macos ffmpeg need to be installed from pacman, apt, brew ... / for windows download the latest release asked by neko_dl if you got an error about it
 
 # Actual Support
 
