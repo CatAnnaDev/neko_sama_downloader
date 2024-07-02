@@ -61,7 +61,7 @@ pub struct Args {
     )]
     pub minimized_chrome: bool,
 
-    #[arg(short = 'a', long, default_value = ".", help = "save path")]
+    #[arg(short = 'a', long, default_value = "executable path", help = "save path")]
     pub save_path: String,
 
     #[arg(
