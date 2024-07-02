@@ -87,9 +87,7 @@ pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String)
                 let output_path = Path::new(&path.tmp_dl).join(file_path.file_name()?);
                 let name = path
                     .exe_path
-                    .parent()
-                    .unwrap()
-                    .join(save_path.clone())
+                    .join(&save_path)
                     .join(utils_data::edit_for_windows_compatibility(
                         &file_path
                             .file_name()
@@ -106,7 +104,6 @@ pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String)
             }
         })
         .collect();
-
     Ok((m3u8_path_folder, save_path_vlc))
 }
 
@@ -144,22 +141,23 @@ pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &We
 
     save_path.push_str(name.as_str());
 
-    let season_path = main_arg.path.tmp_dl.parent().unwrap().join(save_path);
+    let season_path = main_arg.path.exe_path.join(save_path);
     if main_arg.new_args.ignore_alert_missing_episode {
-        if tokio::fs::try_exists(season_path.clone()).await.unwrap() {
-            warn!("Path already exist\n{}", season_path.display());
-            if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
-                if e.as_bool().unwrap() {
-                    println!("{}", season_path.display());
-                    fs::remove_dir_all(season_path.clone())?;
-                } else {
-                    info!("Okay path ignored")
+        if let Ok(pa) = tokio::fs::try_exists(&season_path).await {
+            if pa {
+                warn!("Path already exist\n{}", season_path.display());
+                if let Ok(e) = ask_something("Delete this path (Y) or ignore and continue (N):") {
+                    if e.as_bool().unwrap() {
+                        println!("{}", season_path.display());
+                        fs::remove_dir_all(&season_path)?;
+                    } else {
+                        info!("Okay path ignored")
+                    }
                 }
             }
         }
     }
-
-    fs::create_dir_all(season_path)?;
+    fs::create_dir_all(&season_path)?;
     Ok(())
 }
 

@@ -1,8 +1,7 @@
-use std::{
-    error::Error,
-    str::FromStr,
-    time::{Duration, Instant},
-};
+use std::{env, error::Error, str::FromStr, time::{Duration, Instant}};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
@@ -17,6 +16,7 @@ use neko_process::process::{self, add_ublock, connect_to_chrome_driver};
 use crate::chrome::chrome_spawn::ChromeChild;
 use crate::cmd_arg::cmd_line_parser;
 use crate::cmd_arg::cmd_line_parser::{Args, Scan};
+use crate::config::Config;
 use crate::neko_process::html_parser::enter_iframe_wait_jwplayer;
 use crate::neko_process::process::build_path_to_save_final_video;
 use crate::search_engine::search;
@@ -24,6 +24,7 @@ use crate::search_engine::search::ProcessingUrl;
 use crate::thread::thread_pool;
 use crate::utils::{static_data, utils_check, utils_data};
 use crate::utils::utils_check::AllPath;
+use crate::utils::utils_data::ask_config;
 use crate::utils_data::time_to_human_time;
 use crate::web_client::web;
 
@@ -35,6 +36,7 @@ mod thread;
 mod cmd_arg;
 mod search_engine;
 mod web_client;
+mod config;
 
 pub struct MainArg {
     new_args: Args,
@@ -48,6 +50,36 @@ async fn main()
     -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
 
+    let binding = env::current_exe()?;
+    let current_exe_path = binding.parent().unwrap();
+    let current_config_path = current_exe_path.join("config.json");
+
+
+    if let Ok(mut file) = File::create_new(&current_config_path){
+
+        let language = ask_config("Language ?", vec!["vf", "vostfr"])?;
+        let thread = utils_data::ask_keyword("Nb Worker?")?;
+        let save_path = utils_data::ask_keyword("Save Path")?;
+
+        let config = Config{
+            language: match language.as_list_item(){ Some(e) =>{ e.clone().text } None => { String::from("vf") } },
+            thread: match thread.as_string(){Some(e) => { match e.parse::<usize>() { Ok(e) => {e} Err(_) => {1}}} None => {1}},
+            save_path: match save_path.as_string() { Some(e) => e.to_string(), None => current_exe_path.display().to_string()},
+        };
+
+        let json = serde_json::to_string(&config)?;
+        file.write_all(json.as_bytes())?;
+    }else if !new_args.ignore_config_file {
+        let mut file = File::open(&current_config_path)?;
+        let mut tmp = String::new();
+        file.read_to_string(&mut tmp)?;
+        let x = serde_json::from_str::<Config>(&tmp)?;
+
+        new_args.thread = x.thread;
+        new_args.language = x.language;
+        new_args.save_path = x.save_path;
+    }
+
     header!("{}", static_data::HEADER);
     warn!("Please if you got an Error remember to update Google chrome and chromedriver");
     let mut processing_url = None;
@@ -59,13 +91,20 @@ async fn main()
         }
     }
 
-    info!("{}", new_args);
-
     thread_pool::max_thread_check(&mut new_args);
 
-    let path = utils_check::confirm_chrome_ffmpeg_ublock_presence().await?;
+    let mut path = utils_check::confirm_chrome_ffmpeg_ublock_presence().await?;
+
+    if !new_args.ignore_config_file {
+        path.exe_path = PathBuf::from(&new_args.save_path);
+    }else {
+        path.exe_path = PathBuf::from(current_exe_path);
+        new_args.save_path = path.exe_path.display().to_string()
+    }
 
     let client = Client::builder().build()?;
+
+    info!("{}", new_args);
 
     let mut arg = MainArg {
         new_args,
@@ -111,7 +150,6 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
     info!("Start Processing with {} threads", new_thread);
 
 
-    //let (tx, mut rx) = tokio::sync::mpsc::channel(vec_m3u8_path_folder.len());
     let semaphore = Arc::new(Semaphore::new(new_thread));
 
     let mp = Arc::new(MultiProgress::new());
@@ -140,7 +178,6 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
     if good >= 2 && main_arg.new_args.vlc_playlist {
         process::build_vlc_playlist(vec_save_path_vlc)?;
     }
-    //mp.clear().unwrap();
     process::end_print(before, &main_arg.path, good, error);
 
     Ok(())

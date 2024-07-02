@@ -60,6 +60,18 @@ pub struct Args {
         action = ArgAction::SetTrue
     )]
     pub minimized_chrome: bool,
+
+    #[arg(short = 'a', long, default_value = ".", help = "save path")]
+    pub save_path: String,
+
+    #[arg(
+        short = 'o',
+        long = "ignore_config",
+        default_value_t = false,
+        help = "Ignore Config File at start [default: false]",
+        action = ArgAction::SetTrue
+    )]
+    pub ignore_config_file: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -102,7 +114,8 @@ impl Display for Args {
                   Vlc playlist:\t{}\n\
                   Show Alert:\t{}\n\
                   Minimized:\t{}\n\
-                  Debug:\t\t{}",
+                  Debug:\t\t{}\n\
+                  SavePath\t{}",
             self.url_or_search_word,
             self.language,
             self.thread,
@@ -110,6 +123,7 @@ impl Display for Args {
             self.ignore_alert_missing_episode,
             self.minimized_chrome,
             self.debug,
+            self.save_path,
         )
     }
 }

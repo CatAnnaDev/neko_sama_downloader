@@ -15,6 +15,11 @@ pub fn ask_something(question: &str) -> Result<Answer, Box<dyn Error>> {
     Ok(requestty::prompt_one(question)?)
 }
 
+pub fn ask_config(name: &str, choices_vec: Vec<&str>) -> Result<Answer, Box<dyn Error>>{
+    let question = requestty::Question::select(name).choices(choices_vec).build();
+    Ok(requestty::prompt_one(question)?)
+}
+
 pub fn ask_keyword(question: &str) -> Result<Answer, Box<dyn Error>> {
     let question = requestty::Question::input("anonymous")
         .message(question)
