@@ -1,5 +1,6 @@
 [![All release](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml/badge.svg)](https://github.com/PsykoDev/neko_sama_downloader/actions/workflows/rust.yml)
 
+if you got an error about chrome, remember to update chrome driver AND google chrome browser, if you've always an issue please open new issue with the message obtained
 # Usage
 
 ![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/a8159d4f-2bee-4f62-a42f-e00fc5ec2bf3)
