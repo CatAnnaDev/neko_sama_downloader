@@ -1,4 +1,4 @@
-use std::{env, error::Error, str::FromStr, time::{Duration, Instant}};
+use std::{env, error::Error, fs, str::FromStr, time::{Duration, Instant}};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -97,6 +97,7 @@ async fn main()
 
     if !new_args.ignore_config_file {
         path.exe_path = PathBuf::from(&new_args.save_path);
+        let _ = fs::create_dir_all(&path.exe_path);
     }else {
         path.exe_path = PathBuf::from(current_exe_path);
         new_args.save_path = path.exe_path.display().to_string()
