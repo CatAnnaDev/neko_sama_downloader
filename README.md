@@ -39,6 +39,5 @@ if you got an error about chrome, remember to update chrome driver AND google ch
 
 # Demo
 
-- full demo : [https://youtu.be/8mfNNf3KhNY](https://www.youtube.com/watch?v=hFqYkjqt0gs)
-
+- full demo : https://www.youtube.com/watch?v=hFqYkjqt0gs
 ![image](https://github.com/PsykoDev/neko_sama_downloader/assets/45910905/21c40853-f1fe-4c5c-9a25-9dab00e2f31d)
