@@ -1,6 +1,6 @@
-use std::{env, error::Error, fs, str::FromStr, time::Instant};
-use std::fs::File;
-use std::io::{Read, Write};
+#![feature(let_chains)]
+
+use std::{env, error::Error, str::FromStr, time::Instant};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -23,7 +23,6 @@ use crate::search_engine::search;
 use crate::search_engine::search::ProcessingUrl;
 use crate::thread::thread_pool;
 use crate::utils::{static_data, utils_data};
-use crate::utils::utils_data::ask_config;
 use crate::utils_data::time_to_human_time;
 use crate::web_client::web;
 
@@ -37,7 +36,6 @@ mod web_client;
 mod config;
 
 struct AllPath {
-    config_path: PathBuf,
     tmp_path: PathBuf,
     m3u8_tmp: PathBuf,
 }
@@ -49,93 +47,34 @@ pub struct MainArg {
     client: Client,
 }
 
-fn get_config_path() -> Result<PathBuf, Box<dyn Error>> {
-    let mut config_dir: PathBuf = Default::default();
-
-    match env::consts::OS {
-        "windows" => {
-            config_dir = PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| String::from("C:\\Users\\Default\\AppData\\Roaming\\neko_dl")));
-        }
-        "macos" => {
-            config_dir = PathBuf::from(env::var("HOME").unwrap_or_else(|_| String::from("/Users/Default"))).join(".config/neko_dl");
-        }
-        "linux" => {
-            config_dir = PathBuf::from(env::var("HOME").unwrap_or_else(|_| String::from("/home/default"))).join(".config/neko_dl");
-        }
-        _ => {
-            eprintln!("Système d'exploitation non supporté.");
-        }
-    }
-
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir)?;
-    }
-    Ok(config_dir)
-}
-
 #[tokio::main]
-async fn main()
-    -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
-    let config_path = get_config_path().unwrap().join("config.json");
     let mut tmp_path = env::temp_dir();
 
-    if let Ok(mut file) = File::create_new(&config_path) {
-        let language = ask_config("Language ?", vec!["vf", "vostfr"])?;
-        let thread = utils_data::ask_keyword("Nb Worker?")?;
-        let save_path = utils_data::ask_keyword("Save Path")?;
-
-        let config = Config {
-            language: match language.as_list_item() {
-                Some(e) => { e.clone().text }
-                None => { String::from("vf") }
-            },
-            thread: match thread.as_string() {
-                Some(e) => {
-                    match e.parse::<usize>() {
-                        Ok(e) => { e }
-                        Err(_) => { 1 }
-                    }
-                }
-                None => { 1 }
-            },
-            save_path: match save_path.as_string() {
-                Some(e) => if e.is_empty() { tmp_path.display().to_string() } else { e.to_string() },
-                None => tmp_path.display().to_string()
-            },
-        };
-
-        let json = serde_json::to_string(&config)?;
-        file.write_all(json.as_bytes())?;
-    } else if !new_args.ignore_config_file {
-        let mut file = File::open(&config_path)?;
-        let mut tmp = String::new();
-        file.read_to_string(&mut tmp)?;
-        let x = serde_json::from_str::<Config>(&tmp)?;
-
-        new_args.thread = x.thread;
-        new_args.language = x.language;
-        new_args.save_path = x.save_path;
+    if !new_args.ignore_config_file {
+        let config_path = Config::get_config_path().expect("panic get_config_path config").join("config.json");
+        Config::load(&mut new_args, &tmp_path, &config_path).expect("panic load config");
     }
 
     header!("{}", static_data::HEADER);
     warn!("Please if you got an Error remember to update or download Google chrome");
+
     let mut processing_url = None;
     while processing_url.is_none() {
         let _ = ask_keyword(&mut new_args);
         processing_url = setup_search_or_download(&mut new_args).await?;
         if processing_url.is_none() {
-            new_args.url_or_search_word = Scan::Search("".to_owned())
+            new_args.url_or_search_word = Scan::Search("".to_owned());
         }
     }
 
     thread_pool::max_thread_check(&mut new_args);
 
-
     if !new_args.ignore_config_file {
         tmp_path = PathBuf::from(&new_args.save_path);
-    }else {
-        new_args.save_path = tmp_path.display().to_string()
+    } else {
+        new_args.save_path = tmp_path.display().to_string();
     }
 
     let client = Client::builder().build()?;
@@ -145,7 +84,6 @@ async fn main()
     let mut arg = MainArg {
         new_args,
         path: AllPath {
-            config_path,
             m3u8_tmp: env::temp_dir().join("neko_dl_m3u8/"),
             tmp_path,
         },
