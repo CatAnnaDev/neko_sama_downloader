@@ -115,7 +115,7 @@ async fn main()
     };
 
     let _ = iter_over_url_found(&mut arg).await?;
-
+    
     Ok(())
 }
 
