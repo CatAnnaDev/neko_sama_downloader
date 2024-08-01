@@ -1,5 +1,4 @@
 use std::{
-    path::PathBuf,
     process::Stdio,
     time::Instant,
 };
@@ -12,9 +11,12 @@ use std::sync::Arc;
 use reqwest::{Client, Response};
 use tokio::io::AsyncBufReadExt;
 
-pub async fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, mp: &Arc<MultiProgress>) {
+pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress>) {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     let _ffmpeg = "ffmpeg";
+
+    #[cfg(target_os = "windows")]
+    let _ffmpeg = "ffmpeg.exe";
 
     let time = Instant::now();
     let mut process = tokio::process::Command::new(_ffmpeg).args(&[
@@ -41,8 +43,7 @@ pub async fn download_build_video(path: &str, name: &str, _ffmpeg: &PathBuf, mp:
     if end < 1 {
        // warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
     }
-
-    let mut file = std::fs::File::open(&path).unwrap();
+    let mut file = std::fs::File::open(path).unwrap();
     let mut bytes: Vec<u8> = Vec::new();
     file.read_to_end(&mut bytes).unwrap();
     let parsed = m3u8_rs::parse_media_playlist_res(&bytes).unwrap();

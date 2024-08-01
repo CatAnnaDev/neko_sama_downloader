@@ -51,17 +51,9 @@ pub struct Args {
         action = ArgAction::SetFalse
     )]
     pub ignore_alert_missing_episode: bool,
+    
 
-    #[arg(
-        short = 'm',
-        long = "minimized",
-        default_value_t = false,
-        help = "start chrome minimized or not [default: false]",
-        action = ArgAction::SetTrue
-    )]
-    pub minimized_chrome: bool,
-
-    #[arg(short = 'a', long, default_value = "executable path", help = "save path")]
+    #[arg(short = 'a', long, default_value = "~/tmp", help = "save path")]
     pub save_path: String,
 
     #[arg(
@@ -113,7 +105,6 @@ impl Display for Args {
                   Threads:\t{}\n\
                   Vlc playlist:\t{}\n\
                   Show Alert:\t{}\n\
-                  Minimized:\t{}\n\
                   Debug:\t\t{}\n\
                   SavePath\t{}",
             self.url_or_search_word,
@@ -121,7 +112,6 @@ impl Display for Args {
             self.thread,
             self.vlc_playlist,
             self.ignore_alert_missing_episode,
-            self.minimized_chrome,
             self.debug,
             self.save_path,
         )

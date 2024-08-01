@@ -1,120 +1,76 @@
-use std::{error::Error, fs::File, io};
-
+use std::{error::Error, fs, fs::File, io};
+use chromiumoxide::Page;
+use chromiumoxide::cdp::browser_protocol::page::NavigateParams;
+use chromiumoxide::cdp::js_protocol::runtime::EvaluateParams;
+use chromiumoxide::error::CdpError;
 use m3u8_rs::Playlist;
 use reqwest::StatusCode;
-use thirtyfour::{By, WebDriver, WebElement};
-
+use scraper::{Html, Selector};
 use crate::{debug, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
 use crate::utils::utils_data;
 use crate::web_client::web;
 
-pub async fn recursive_find_url(driver: &WebDriver, _url_test: &str, main_arg: &MainArg)
+pub async fn recursive_find_url(page: &Page, _url_test: &str, main_arg: &MainArg)
                                 -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_l = vec![];
-
+    page.goto(NavigateParams::builder().url(_url_test).build().unwrap()).await?.wait_for_navigation().await?;
     // direct url
     if _url_test.contains("/episode/") {
-        driver.goto(_url_test).await?;
         all_l.push(_url_test.to_string());
         return Ok(all_l);
     }
 
-    // check next page
-    let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
+    all_l.extend(get_all_link_base_href(&page, &main_arg.new_args).await?);
 
-    // only one page
-    if n.len() == 0 {
-        all_l.extend(get_all_link_base_href(&driver, &main_arg.new_args).await?);
-        return Ok(all_l);
-    }
-
-    // iter over all page possible
-    let page_return = next_page(&driver, &main_arg.new_args, &n).await?;
-    all_l.extend(page_return);
     Ok(all_l)
 }
 
-async fn next_page(driver: &WebDriver, args: &Args, n: &Vec<WebElement>)
-                   -> Result<Vec<String>, Box<dyn Error>> {
-    let mut all_links = vec![];
-    while n.len() != 0 {
-        all_links.extend(get_all_link_base_href(&driver, args).await?);
-        let n = driver.find_all(By::ClassName("animeps-next-page")).await?;
-        if !n
-            .first()
-            .expect("first")
-            .attr("class")
-            .await?
-            .expect("euh")
-            .contains("disabled")
-        {
-            info!("Next page");
-            driver
-                .execute(
-                    r#"document.querySelector('.animeps-next-page').click();"#,
-                    vec![],
-                )
-                .await?;
-        } else {
-            break;
-        }
-    }
 
-    Ok(all_links)
-}
-
-
-async fn get_all_link_base_href(driver: &WebDriver, args: &Args)
+async fn get_all_link_base_href(page: &&Page, args: &Args)
                                 -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
-    let mut play_class = driver.find_all(By::ClassName("play")).await?;
+    let content = page.content().await?;
+    let document = Html::parse_document(&content);
+    let selector = Selector::parse(".ui.button.fluid.small.black.text-left").unwrap();
 
-    if play_class.len() == 0 {
-        play_class = driver.find_all(By::ClassName("text-left")).await?;
-    }
-
-    for x in play_class {
-        if let Some(url) = x.attr("href").await? {
+    for element in document.select(&selector) {
+        if let Some(href) = element.value().attr("href") {
             if args.debug {
-                debug!("get_all_link_base_href: {url}")
+                debug!("get_all_link_base_href: {href}")
             }
-            url_found.push(url)
+            url_found.push(href.to_owned())
         }
     }
+
+    url_found.sort();
+
     Ok(url_found)
 }
 
-pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, main_arg: &MainArg)
+pub async fn enter_iframe_wait_jwplayer(page: &Page, all_l: Vec<String>, main_arg: &MainArg)
                                         -> Result<(usize, usize), Box<dyn Error>> {
     let mut nb_found = 0;
     let mut nb_error = 0;
 
     for fuse_iframe in all_l {
-        driver.handle.goto(&fuse_iframe).await?;
+        page.goto(NavigateParams::builder().url(&fuse_iframe).build().unwrap())
+            .await?
+            .wait_for_navigation()
+            .await?;
 
-        let url = driver.handle.find(By::Id("un_episode")).await?;
-        if url.attr("src").await?.unwrap() != "undefined".to_string() {
-            // force wait after iframe update jwplayer in html
-            match url.handle.clone().enter_frame(0).await {
-                Ok(_) => {
-                    loop {
-                        match driver.handle.find(By::Id("main-player")).await {
-                            Ok(e) => {
-                                if let Ok(a) = e.attr("class").await {
-                                    if let Some(a) = a {
-                                        if a.contains("jwplayer") {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            Err(_) => {
-                                continue;
-                            }
-                        }
-                    }
-                    let (found, error) = find_and_get_m3u8(nb_found, nb_error, &driver, main_arg).await?;
+        let name = utils_data::edit_for_windows_compatibility(
+            &page.get_title().await?.unwrap().replace(" - Neko Sama", ""),
+        );
+
+        let iframe_selector = r#"//*[@id="un_episode"]"#;
+        let iframes = page.find_xpath(iframe_selector).await?;
+
+
+        if iframes.attribute("src").await?.unwrap() != "undefined".to_string() {
+            match page.goto(NavigateParams::builder().url(&iframes.attribute("src").await?.unwrap()).build().unwrap()).await?.wait_for_navigation().await {
+                Ok(e) => {
+                    let (found, error) = find_and_get_m3u8(nb_found, nb_error, &e, main_arg, name).await?;
                     nb_found = found;
                     nb_error = error;
                 }
@@ -122,41 +78,56 @@ pub async fn enter_iframe_wait_jwplayer(driver: &WebDriver, all_l: Vec<String>, 
             }
         } else {
             nb_error += 1;
-            warn!("ignored 404: {}", driver.title().await?)
+            warn!("ignored 404: {}", page.get_title().await?.unwrap())
         }
-        driver.handle.enter_parent_frame().await?;
     }
     // utils_data::kill_process()?;
     Ok((nb_found, nb_error))
 }
 
-async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, driver: &WebDriver, main_arg: &MainArg)
-                           -> Result<(usize, usize), Box<dyn Error>> {
-    let name = utils_data::edit_for_windows_compatibility(
-        &driver.title().await?.replace(" - Neko Sama", ""),
-    );
-    match driver
-        .handle
-        .execute(r#"return jwplayer().getPlaylistItem();"#, vec![])
-        .await
-    {
-        Ok(script) => {
-            info!("Get m3u8 for: {}", name);
-            match script.json()["file"].as_str() {
-                None => {
-                    error!("can't exec js for {name}: {:?}", script)
-                }
-                Some(url) => {
-                    download_and_save_m3u8(
-                        url,
-                        &name.trim().replace(":", "").replace(" ", "_"),
-                        main_arg,
-                    )
-                        .await?;
+async fn extract_m3u8_url(page: &Page) -> chromiumoxide::Result<String> {
+    let js_code = r#"
+new Promise(async(resolve) => {
+    const checkJWPlayer = async() => {
+        if (window.jwplayer != null) {
+            resolve(jwplayer().getPlaylistItem().file)
+        }  else {
+            setTimeout(checkJWPlayer, 500);
+        }
+    };
+   return await checkJWPlayer();
+});
+    "#;
 
-                    nb_found += 1;
-                }
-            }
+    let evaluate_params = EvaluateParams::builder()
+        .expression(js_code)
+        .await_promise(true)
+        .build()
+        .unwrap();
+    let result = page.evaluate(evaluate_params).await?;
+
+    if let Some(value) = result.value() {
+        let m3u8_url = value.as_str().unwrap();
+        Ok(m3u8_url.to_string())
+    } else {
+        Err(CdpError::NoResponse)
+    }
+}
+
+async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, page: &Page, main_arg: &MainArg, name: String)
+                           -> Result<(usize, usize), Box<dyn Error>> {
+    match extract_m3u8_url(&page).await
+    {
+        Ok(url) => {
+            info!("Get m3u8 for: {}", name);
+            download_and_save_m3u8(
+                &url,
+                &name.trim().replace(":", "").replace(" ", "_"),
+                main_arg,
+            )
+                .await?;
+
+            nb_found += 1;
         }
         Err(e) => {
             error!("Can't get .m3u8 {name} (probably 404)\n{:?}", e);
@@ -177,9 +148,9 @@ async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg)
                 let parsed = m3u8_rs::parse_playlist_res(split).unwrap();
 
                 let good_url = test_resolution(parsed, main_arg).await;
-
+                let _ = fs::create_dir_all( &main_arg.path.m3u8_tmp);
                 let mut out =
-                    File::create(format!("{}/{file_name}.m3u8", main_arg.path.tmp_dl.to_str().unwrap()))
+                    File::create(format!("{}/{file_name}.m3u8", main_arg.path.m3u8_tmp.display()))
                         .expect("failed to create file");
 
                 if main_arg.new_args.debug {

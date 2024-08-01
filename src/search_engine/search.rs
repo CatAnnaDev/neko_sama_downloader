@@ -1,8 +1,7 @@
 use std::error::Error;
 
 use reqwest::Client;
-use serde_derive::{Deserialize, Serialize};
-
+use serde::Deserialize;
 use crate::{debug, warn};
 use crate::web_client::web;
 
@@ -127,7 +126,7 @@ fn levenshtein(word1: &str, word2: &str) -> usize {
 
 pub type Root = Vec<Season>;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Season {
     pub id: i64,

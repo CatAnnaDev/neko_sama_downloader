@@ -3,20 +3,19 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::exit,
-    time::{Duration, Instant},
+    time::Instant,
 };
-use thirtyfour::{By, ChromeCapabilities, ChromiumLikeCapabilities, WebDriver};
+use chromiumoxide::Page;
 
-use crate::{debug, error, info, MainArg, warn};
+use crate::{AllPath, error, info, MainArg, warn};
 use crate::cmd_arg::cmd_line_parser::Args;
 use crate::neko_process::html_parser;
-use crate::utils::utils_check::AllPath;
 use crate::utils::utils_data;
 use crate::utils::utils_data::ask_something;
 use crate::vlc::vlc_playlist_builder;
 
-pub async fn scan_main(driver: &WebDriver, url_test: &str, main_arg: &MainArg)
-    -> Result<Vec<String>, Box<dyn Error>> {
+pub async fn scan_main(driver: &Page, url_test: &str, main_arg: &MainArg)
+                       -> Result<Vec<String>, Box<dyn Error>> {
     info!("Scan Main Page");
 
     // found all urls
@@ -44,49 +43,20 @@ pub fn prevent_case_nothing_found_or_error(good: usize, error: usize, args: &Mai
     }
 }
 
-pub async fn shutdown_chrome(args: &MainArg, driver: WebDriver) {
-    // kill chromedriver
-    if args.new_args.debug {
-        debug!("chromedriver close_window");
-    }
-    if let Ok(_) = driver.close_window().await {}
-    if args.new_args.debug {
-        debug!("chromedriver quit");
-    }
-    if let Ok(_) = driver.quit().await {}
-    if args.new_args.debug {
-        debug!("chromedriver kill process");
-    }
-}
-
-pub fn add_ublock(args: &MainArg)
-    -> Result<ChromeCapabilities, Box<dyn Error>> {
-    if args.new_args.debug {
-        debug!("add ublock origin");
-    }
-    let mut prefs = ChromeCapabilities::new();
-    prefs
-        .add_extension(&*args.path.u_block_path)
-        .expect("can't install ublock origin");
-    prefs.set_ignore_certificate_errors()?;
-    Ok(prefs)
-}
 
 pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String)
     -> Result<(Vec<(PathBuf, PathBuf)>, Vec<(PathBuf, String)>), Box<dyn Error>> {
     let mut save_path_vlc = vec![];
 
-    let m3u8_path_folder: Vec<_> = fs::read_dir(&path.tmp_dl)?
+    let m3u8_path_folder: Vec<_> = fs::read_dir(&path.m3u8_tmp)?
         .filter_map(|entry| {
-            let save = &mut save_path_vlc;
 
             let entry = entry.ok();
             let file_path = entry?.path();
-
             if file_path.is_file() {
-                let output_path = Path::new(&path.tmp_dl).join(file_path.file_name()?);
+                let output_path = Path::new(&path.m3u8_tmp).join(file_path.file_name()?);
                 let name = path
-                    .exe_path
+                    .tmp_path
                     .join(&save_path)
                     .join(utils_data::edit_for_windows_compatibility(
                         &file_path
@@ -97,7 +67,7 @@ pub fn build_vec_m3u8_folder_path(path: &AllPath, save_path: String)
                             .replace(".m3u8", ".mp4")
                             .replace(" ", "_"),
                     ));
-                save.push((name.clone(), save_path.clone()));
+                save_path_vlc.push((name.clone(), save_path.clone()));
                 Some((output_path, name))
             } else {
                 None
@@ -115,33 +85,16 @@ pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>)
     Ok(())
 }
 
-pub async fn connect_to_chrome_driver(args: &MainArg, prefs: ChromeCapabilities, url_test: &str)
-    -> Result<WebDriver, Box<dyn Error>> {
-    if args.new_args.debug {
-        debug!("connect to chrome driver");
-    }
 
-    let driver = WebDriver::new("http://localhost:6969", prefs).await?;
-
-    if args.new_args.minimized_chrome {
-        driver.minimize_window().await?;
-    }
-
-    driver.set_page_load_timeout(Duration::from_secs(20)).await?;
-    driver.goto(url_test).await?;
-
-    Ok(driver)
-}
-
-pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &WebDriver, url_test: &str, main_arg: &MainArg)
+pub async fn build_path_to_save_final_video(save_path: &mut String, page: &Page, url_test: &str, main_arg: &MainArg)
     -> Result<(), Box<dyn Error>> {
-    fs::create_dir_all(&main_arg.path.tmp_dl)?;
+    fs::create_dir_all(&main_arg.path.tmp_path)?;
 
-    let name = get_name_based_on_url(url_test, &main_arg.new_args, &drivers).await?;
+    let name = get_name_based_on_url(url_test, &main_arg.new_args, &page).await?;
 
     save_path.push_str(name.as_str());
 
-    let season_path = main_arg.path.exe_path.join(save_path);
+    let season_path = main_arg.path.tmp_path.join(save_path);
     if main_arg.new_args.ignore_alert_missing_episode {
         if let Ok(pa) = tokio::fs::try_exists(&season_path).await {
             if pa {
@@ -161,32 +114,19 @@ pub async fn build_path_to_save_final_video(save_path: &mut String, drivers: &We
     Ok(())
 }
 
-async fn get_base_name_direct_url(driver: &WebDriver)
+async fn get_base_name_direct_url(page: &Page) // TODO change this
     -> String {
-    let class = driver
-        .find(By::XPath(
-            r#"//*[@id="watch"]/div/div[4]/div[1]/div/div/h2/a"#,
-        ))
-        .await
-        .expect("Can't get real name direct url");
-
-    let path = class
-        .inner_html()
-        .await
-        .expect("Can't get real name direct innerhtml");
-    path
+    page.get_title().await.unwrap().unwrap()
 }
 
-async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver)
+async fn get_name_based_on_url(url_test: &str, args: &Args, page: &Page)
     -> Result<String, Box<dyn Error>> {
     let path = if !url_test.contains("/episode/") {
         format!(
             "Anime_Download/{}/{}",
             args.language.to_uppercase(),
             &utils_data::edit_for_windows_compatibility(
-                &drivers
-                    .title()
-                    .await?
+                &page.get_title().await.unwrap().unwrap()
                     .replace(" - Neko Sama", "")
                     .replace(" ", "_")
             )
@@ -196,7 +136,7 @@ async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver)
             "Anime_Download/{}/{}",
             args.language.to_uppercase(),
             &utils_data::edit_for_windows_compatibility(
-                &get_base_name_direct_url(&drivers)
+                &get_base_name_direct_url(&page)
                     .await
                     .replace(" - Neko Sama", "")
                     .replace(" ", "_")
@@ -208,7 +148,7 @@ async fn get_name_based_on_url(url_test: &str, args: &Args, drivers: &WebDriver)
 
 pub fn end_print(before: Instant, path: &AllPath, good: usize, error: usize) {
     info!("Clean tmp dir!");
-    utils_data::remove_dir_contents(&path.tmp_dl);
+    utils_data::remove_dir_contents(&path.m3u8_tmp);
     info!(
         "Done in: {} for {} episodes and {} error",
         utils_data::time_to_human_time(before),

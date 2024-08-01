@@ -1,35 +1,33 @@
-use std::{env, error::Error, fs, str::FromStr, time::{Duration, Instant}};
+use std::{env, error::Error, fs, str::FromStr, time::Instant};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use chromiumoxide::{Browser, BrowserConfig, Page};
+use chromiumoxide::browser::HeadlessMode;
 use clap::Parser;
+use futures::StreamExt;
 use indicatif::MultiProgress;
 use requestty::{Answer, OnEsc, prompt_one, Question};
 use reqwest::Client;
-use thirtyfour::WebDriver;
 use tokio::sync::Semaphore;
 
-use neko_process::process::{self, add_ublock, connect_to_chrome_driver};
-
-use crate::chrome::chrome_spawn::ChromeChild;
 use crate::cmd_arg::cmd_line_parser;
 use crate::cmd_arg::cmd_line_parser::{Args, Scan};
 use crate::config::Config;
 use crate::neko_process::html_parser::enter_iframe_wait_jwplayer;
+use crate::neko_process::process;
 use crate::neko_process::process::build_path_to_save_final_video;
 use crate::search_engine::search;
 use crate::search_engine::search::ProcessingUrl;
 use crate::thread::thread_pool;
-use crate::utils::{static_data, utils_check, utils_data};
-use crate::utils::utils_check::AllPath;
+use crate::utils::{static_data, utils_data};
 use crate::utils::utils_data::ask_config;
 use crate::utils_data::time_to_human_time;
 use crate::web_client::web;
 
 mod neko_process;
-mod chrome;
 mod vlc;
 mod utils;
 mod thread;
@@ -38,6 +36,12 @@ mod search_engine;
 mod web_client;
 mod config;
 
+struct AllPath {
+    config_path: PathBuf,
+    tmp_path: PathBuf,
+    m3u8_tmp: PathBuf,
+}
+
 pub struct MainArg {
     new_args: Args,
     path: AllPath,
@@ -45,32 +49,66 @@ pub struct MainArg {
     client: Client,
 }
 
+fn get_config_path() -> Result<PathBuf, Box<dyn Error>> {
+    let mut config_dir: PathBuf = Default::default();
+
+    match env::consts::OS {
+        "windows" => {
+            config_dir = PathBuf::from(env::var("APPDATA").unwrap_or_else(|_| String::from("C:\\Users\\Default\\AppData\\Roaming\\neko_dl")));
+        }
+        "macos" => {
+            config_dir = PathBuf::from(env::var("HOME").unwrap_or_else(|_| String::from("/Users/Default"))).join(".config/neko_dl");
+        }
+        "linux" => {
+            config_dir = PathBuf::from(env::var("HOME").unwrap_or_else(|_| String::from("/home/default"))).join(".config/neko_dl");
+        }
+        _ => {
+            eprintln!("Système d'exploitation non supporté.");
+        }
+    }
+
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir)?;
+    }
+    Ok(config_dir)
+}
+
 #[tokio::main]
 async fn main()
     -> Result<(), Box<dyn Error>> {
     let mut new_args = cmd_line_parser::Args::parse();
+    let config_path = get_config_path().unwrap().join("config.json");
+    let mut tmp_path = env::temp_dir();
 
-    let binding = env::current_exe()?;
-    let current_exe_path = binding.parent().unwrap();
-    let current_config_path = current_exe_path.join("config.json");
-
-
-    if let Ok(mut file) = File::create_new(&current_config_path){
-
+    if let Ok(mut file) = File::create_new(&config_path) {
         let language = ask_config("Language ?", vec!["vf", "vostfr"])?;
         let thread = utils_data::ask_keyword("Nb Worker?")?;
         let save_path = utils_data::ask_keyword("Save Path")?;
 
-        let config = Config{
-            language: match language.as_list_item(){ Some(e) =>{ e.clone().text } None => { String::from("vf") } },
-            thread: match thread.as_string(){Some(e) => { match e.parse::<usize>() { Ok(e) => {e} Err(_) => {1}}} None => {1}},
-            save_path: match save_path.as_string() { Some(e) => e.to_string(), None => current_exe_path.display().to_string()},
+        let config = Config {
+            language: match language.as_list_item() {
+                Some(e) => { e.clone().text }
+                None => { String::from("vf") }
+            },
+            thread: match thread.as_string() {
+                Some(e) => {
+                    match e.parse::<usize>() {
+                        Ok(e) => { e }
+                        Err(_) => { 1 }
+                    }
+                }
+                None => { 1 }
+            },
+            save_path: match save_path.as_string() {
+                Some(e) => if e.is_empty() { tmp_path.display().to_string() } else { e.to_string() },
+                None => tmp_path.display().to_string()
+            },
         };
 
         let json = serde_json::to_string(&config)?;
         file.write_all(json.as_bytes())?;
-    }else if !new_args.ignore_config_file {
-        let mut file = File::open(&current_config_path)?;
+    } else if !new_args.ignore_config_file {
+        let mut file = File::open(&config_path)?;
         let mut tmp = String::new();
         file.read_to_string(&mut tmp)?;
         let x = serde_json::from_str::<Config>(&tmp)?;
@@ -81,7 +119,7 @@ async fn main()
     }
 
     header!("{}", static_data::HEADER);
-    warn!("Please if you got an Error remember to update Google chrome and chromedriver");
+    warn!("Please if you got an Error remember to update or download Google chrome");
     let mut processing_url = None;
     while processing_url.is_none() {
         let _ = ask_keyword(&mut new_args);
@@ -93,14 +131,11 @@ async fn main()
 
     thread_pool::max_thread_check(&mut new_args);
 
-    let mut path = utils_check::confirm_chrome_ffmpeg_ublock_presence().await?;
 
     if !new_args.ignore_config_file {
-        path.exe_path = PathBuf::from(&new_args.save_path);
-        let _ = fs::create_dir_all(&path.exe_path);
+        tmp_path = PathBuf::from(&new_args.save_path);
     }else {
-        path.exe_path = PathBuf::from(current_exe_path);
-        new_args.save_path = path.exe_path.display().to_string()
+        new_args.save_path = tmp_path.display().to_string()
     }
 
     let client = Client::builder().build()?;
@@ -109,34 +144,36 @@ async fn main()
 
     let mut arg = MainArg {
         new_args,
-        path,
+        path: AllPath {
+            config_path,
+            m3u8_tmp: env::temp_dir().join("neko_dl_m3u8/"),
+            tmp_path,
+        },
         processing_url: processing_url.unwrap(),
         client,
     };
 
     let _ = iter_over_url_found(&mut arg).await?;
-    
+
     Ok(())
 }
 
-async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
+async fn start(url_test: &str, page: &Page, main_arg: &MainArg)
                -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
-    let all_url_found = process::scan_main(&driver, url_test, main_arg).await?;
+    let all_url_found = process::scan_main(page, url_test, main_arg).await?;
 
     let mut save_path = String::new();
     // make final path to save
-    build_path_to_save_final_video(&mut save_path, &driver, url_test, main_arg).await?;
+    build_path_to_save_final_video(&mut save_path, &page, url_test, main_arg).await?;
 
     // iter overs all urls found
-    let (good, error) = enter_iframe_wait_jwplayer(&driver, all_url_found, main_arg).await?;
+    let (good, error) = enter_iframe_wait_jwplayer(page, all_url_found, main_arg).await?;
 
     info!("total found: {}", good);
 
     process::prevent_case_nothing_found_or_error(good, error, main_arg);
-
-    process::shutdown_chrome(main_arg, driver).await;
 
     let mut new_thread = main_arg.new_args.thread;
     if new_thread > good {
@@ -155,26 +192,23 @@ async fn start(url_test: &str, driver: WebDriver, main_arg: &MainArg)
 
     let mp = Arc::new(MultiProgress::new());
 
-        let handles = vec_m3u8_path_folder.into_iter().map(|(output_path, name)| {
-            let ffmpeg = main_arg.path.ffmpeg_path.clone();
-            let mp = Arc::clone(&mp);
-            let sema = Arc::clone(&semaphore);
+    let handles = vec_m3u8_path_folder.into_iter().map(|(output_path, name)| {
+        let mp = Arc::clone(&mp);
+        let sema = Arc::clone(&semaphore);
+        tokio::spawn(async move {
+            let permit = sema.acquire_owned().await.unwrap();
 
-            tokio::spawn(async move {
-                let permit = sema.acquire_owned().await.unwrap();
+            web::download_build_video(
+                &output_path.to_str().unwrap(),
+                name.to_str().unwrap(),
+                &mp,
+            ).await;
 
-                web::download_build_video(
-                    &output_path.to_str().unwrap(),
-                    name.to_str().unwrap(),
-                    &ffmpeg,
-                    &mp
-                ).await;
+            drop(permit);
+        })
+    }).collect::<Vec<_>>();
 
-                drop(permit);
-            })
-        }).collect::<Vec<_>>();
-
-        futures::future::join_all(handles).await;
+    futures::future::join_all(handles).await;
 
     if good >= 2 && main_arg.new_args.vlc_playlist {
         process::build_vlc_playlist(vec_save_path_vlc)?;
@@ -192,20 +226,23 @@ async fn iter_over_url_found(main_arg: &mut MainArg)
             debug!("spawn chrome process");
         }
 
-        let mut child = ChromeChild::spawn(&main_arg.path.chrome_path);
-        if main_arg.new_args.debug {
-            debug!("wait 1sec chrome process spawn correctly");
-        }
+        let config = BrowserConfig::builder().headless_mode(HeadlessMode::New).build().unwrap();
+        let (mut browser, mut handler) = Browser::launch(config).await.unwrap();
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
+        let handle = tokio::spawn(async move {
+            while let Some(Ok(event)) = handler.next().await {
+                println!("Received browser event: {:?}", event);
+            }
+        });
+        let page = browser.new_page("https://neko-sama.fr/").await?;
         for (index, x) in main_arg.processing_url.iter().enumerate() {
             header!("Step {} / {}", index + 1, main_arg.processing_url.len());
             info!("Process: {}", x.url);
-            start(&x.url, connect_to_chrome_driver(&main_arg, add_ublock(&main_arg)?, &x.url).await?, &main_arg).await?;
+            start(&x.url, &page ,&main_arg).await?;
         }
 
-        child.chrome.kill()?;
+        browser.close().await?;
+        handle.await.unwrap();
     });
 
     Ok(())
