@@ -63,37 +63,6 @@ pub fn edit_for_windows_compatibility(name: &str) -> String {
     regex.replace_all(name, "").to_string()
 }
 
-#[cfg(target_os = "windows")]
-pub fn _path_length_windows(path: &str) -> Result<(), Box<dyn Error>> {
-    use crate::{error, info, warn};
-    use std::{
-        io::{stdin, stdout, Write},
-        process::exit,
-    };
-    if path.len() > 240 {
-        let mut s = String::new();
-        warn!("Path too long do you want enable long path in windows? [Y/n]: ");
-        let _ = stdout().flush();
-        stdin()
-            .read_line(&mut s)
-            .expect("Did not enter a correct string");
-        if s.to_lowercase().trim() == "y" {
-            use winreg::enums::*;
-            use winreg::RegKey;
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let path = Path::new("SYSTEM\\CurrentControlSet\\Control\\FileSystem")
-                .join("LongPathsEnabled");
-            let (key, _) = hklm.create_subkey(&path)?;
-            key.set_value("LongPathsEnabled", &1u32)?;
-            info!("LongPathsEnabled, continue")
-        } else {
-            error!("Quitting app, path too long");
-            exit(130);
-        };
-    }
-    Ok(())
-}
-
 pub fn remove_dir_contents<P: AsRef<Path>>(path: P) {
     if let Ok(_) = fs::remove_dir_all(path) {}
 }

@@ -66,14 +66,16 @@ pub async fn search_over_json(name: &str, lang: &str, debug: &bool, )
     Ok(find)
 }
 
-fn clean_string(s: &str) -> String {
+fn clean_string(s: &str) 
+    -> String {
     s.chars()
         .filter(|&c| c.is_alphanumeric() || c.is_whitespace())
         .collect::<String>()
         .to_lowercase()
 }
 
-fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_threshold: f64) -> bool {
+fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_threshold: f64) 
+    -> bool {
     let input = input.to_lowercase();
     let query = query.to_lowercase();
 
@@ -96,7 +98,8 @@ fn is_match(input: &str, query: &str, levenshtein_threshold: f64, matched_thresh
     matched >= (matched_threshold * query_words.len() as f64)
 }
 
-fn levenshtein(word1: &str, word2: &str) -> usize {
+fn levenshtein(word1: &str, word2: &str) 
+    -> usize {
     let w1 = word1.chars().collect::<Vec<_>>();
     let w2 = word2.chars().collect::<Vec<_>>();
 

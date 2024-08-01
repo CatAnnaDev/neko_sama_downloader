@@ -12,7 +12,7 @@ use crate::utils::utils_data;
 use crate::web_client::web;
 
 pub async fn recursive_find_url(page: &Page, _url_test: &str, main_arg: &MainArg)
-                                -> Result<Vec<String>, Box<dyn Error>> {
+    -> Result<Vec<String>, Box<dyn Error>> {
     let mut all_l = vec![];
     page.goto(NavigateParams::builder().url(_url_test).build().unwrap()).await?.wait_for_navigation().await?;
     // direct url
@@ -28,7 +28,7 @@ pub async fn recursive_find_url(page: &Page, _url_test: &str, main_arg: &MainArg
 
 
 async fn get_all_link_base_href(page: &&Page, args: &Args)
-                                -> Result<Vec<String>, Box<dyn Error>> {
+    -> Result<Vec<String>, Box<dyn Error>> {
     let mut url_found = vec![];
     let content = page.content().await?;
     let document = Html::parse_document(&content);
@@ -49,7 +49,7 @@ async fn get_all_link_base_href(page: &&Page, args: &Args)
 }
 
 pub async fn enter_iframe_wait_jwplayer(page: &Page, all_l: Vec<String>, main_arg: &MainArg)
-                                        -> Result<(usize, usize), Box<dyn Error>> {
+    -> Result<(usize, usize), Box<dyn Error>> {
     let mut nb_found = 0;
     let mut nb_error = 0;
 
@@ -115,7 +115,7 @@ new Promise(async(resolve) => {
 }
 
 async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, page: &Page, main_arg: &MainArg, name: String)
-                           -> Result<(usize, usize), Box<dyn Error>> {
+    -> Result<(usize, usize), Box<dyn Error>> {
     match extract_m3u8_url(&page).await
     {
         Ok(url) => {
@@ -139,7 +139,7 @@ async fn find_and_get_m3u8(mut nb_found: usize, mut nb_error: usize, page: &Page
 }
 
 async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg)
-                                -> Result<(), Box<dyn Error>> {
+    -> Result<(), Box<dyn Error>> {
     match web::web_request(&main_arg.client, &url).await {
         Ok(body) => match body.status() {
             StatusCode::OK => {
@@ -181,7 +181,7 @@ async fn download_and_save_m3u8(url: &str, file_name: &str, main_arg: &MainArg)
 }
 
 async fn test_resolution(parsed: Playlist, main_arg: &MainArg)
-                         -> String {
+    -> String {
     let mut _good_url = String::new();
     match parsed {
         Playlist::MasterPlaylist(pl) => {

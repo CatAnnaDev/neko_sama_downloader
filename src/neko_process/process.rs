@@ -15,7 +15,7 @@ use crate::utils::utils_data::ask_something;
 use crate::vlc::vlc_playlist_builder;
 
 pub async fn scan_main(driver: &Page, url_test: &str, main_arg: &MainArg)
-                       -> Result<Vec<String>, Box<dyn Error>> {
+    -> Result<Vec<String>, Box<dyn Error>> {
     info!("Scan Main Page");
 
     // found all urls
@@ -84,7 +84,6 @@ pub fn build_vlc_playlist(mut save_path_vlc: Vec<(PathBuf, String)>)
     vlc_playlist_builder::new(save_path_vlc)?;
     Ok(())
 }
-
 
 pub async fn build_path_to_save_final_video(save_path: &mut String, page: &Page, url_test: &str, main_arg: &MainArg)
     -> Result<(), Box<dyn Error>> {

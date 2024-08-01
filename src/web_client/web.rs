@@ -1,6 +1,3 @@
-use std::{
-    time::Instant,
-};
 use std::io::BufRead;
 use std::fs::File;
 use std::time::Duration;
@@ -19,7 +16,6 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
     #[cfg(target_os = "windows")]
     let ffmpeg = "ffmpeg.exe";
 
-    let time = Instant::now();
     let mut process = Command::new(ffmpeg).args(&[
         "-protocol_whitelist",
         "file,http,https,tcp,tls,crypto",
@@ -37,11 +33,7 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
         .spawn()
         .unwrap();
 
-    let end = time.elapsed().as_secs();
 
-    if end < 1 {
-        // warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
-    }
 
     let mut file = File::open(path).unwrap();
     let mut bytes: Vec<u8> = Vec::new();
@@ -70,9 +62,7 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
         }
     }
 
-    if process.wait().unwrap().success() {
-    } else {
-    }
+    let _ = process.wait().unwrap().success();
 
     progress_bar.finish();
 }
