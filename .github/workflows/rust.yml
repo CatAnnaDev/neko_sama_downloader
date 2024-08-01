@@ -1,10 +1,9 @@
 name: Rust CI/CD
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  release:
+    types:
+      - created
 
 env:
   CARGO_TERM_COLOR: always
@@ -97,7 +96,6 @@ jobs:
           path: ./artifacts/$NAME-${{ matrix.target }}-$TAG.tar.gz
 
   deploy:
-    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
