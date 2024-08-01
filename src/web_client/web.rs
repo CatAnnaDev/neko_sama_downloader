@@ -1,25 +1,26 @@
 use std::{
-    process::Stdio,
     time::Instant,
 };
+use std::io::BufRead;
+use std::fs::File;
 use std::time::Duration;
 use indicatif::{MultiProgress, MultiProgressAlignment, ProgressBar, ProgressStyle};
 use m3u8_rs::MediaPlaylist;
-use std::io::Read;
+use std::io::{BufReader, Read};
+use std::process::Command;
 use std::sync::Arc;
 
 use reqwest::{Client, Response};
-use tokio::io::AsyncBufReadExt;
 
 pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress>) {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let _ffmpeg = "ffmpeg";
+    let ffmpeg = "ffmpeg";
 
     #[cfg(target_os = "windows")]
-    let _ffmpeg = "ffmpeg.exe";
+    let ffmpeg = "ffmpeg.exe";
 
     let time = Instant::now();
-    let mut process = tokio::process::Command::new(_ffmpeg).args(&[
+    let mut process = Command::new(ffmpeg).args(&[
         "-protocol_whitelist",
         "file,http,https,tcp,tls,crypto",
         "-i",
@@ -32,23 +33,22 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
         "copy",
         &name,
     ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()
         .unwrap();
-
 
     let end = time.elapsed().as_secs();
 
     if end < 1 {
-       // warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
+        // warn!("Episode {} are skipped or something went wrong, Please check download folder or use -v argument", name.split("/").last().unwrap())
     }
-    let mut file = std::fs::File::open(path).unwrap();
+
+    let mut file = File::open(path).unwrap();
     let mut bytes: Vec<u8> = Vec::new();
     file.read_to_end(&mut bytes).unwrap();
     let parsed = m3u8_rs::parse_media_playlist_res(&bytes).unwrap();
     let size = match parsed {
-        MediaPlaylist { segments, .. } => segments.len()
+        MediaPlaylist { segments, .. } => segments.len(),
     };
 
     mp.set_alignment(MultiProgressAlignment::Bottom);
@@ -56,19 +56,21 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
     progress_bar.enable_steady_tick(Duration::from_secs(1));
     progress_bar.set_message(name.split("/").last().unwrap().to_string());
     progress_bar.set_style(
-        ProgressStyle::default_bar().template("[{elapsed_precise}] |{wide_bar:.cyan/blue}| {pos}/{len} ({eta}) ({msg})").unwrap().progress_chars("=> "),
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] |{wide_bar:.cyan/blue}| {pos}/{len} ({eta}) ({msg})")
+            .unwrap()
+            .progress_chars("=> "),
     );
 
-    let s = tokio::io::BufReader::new(process.stderr.take().unwrap());
+    let s = BufReader::new(process.stderr.take().unwrap());
     let mut lines = s.lines();
-    while let Ok(Some(l)) = lines.next_line().await {
-        if l.contains(".ts") && l.contains("Opening") {
+    while let Some(Ok(l)) = lines.next() {
+        if l.contains(".ts") && l.contains("Opening") && l.contains("https @") {
             progress_bar.inc(1);
         }
     }
 
-
-    if process.wait().await.unwrap().success() {
+    if process.wait().unwrap().success() {
     } else {
     }
 

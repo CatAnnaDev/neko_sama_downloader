@@ -126,9 +126,8 @@ async fn start(url_test: &str, page: &Page, main_arg: &MainArg)
     info!("Start Processing with {} threads", new_thread);
 
 
-    let semaphore = Arc::new(Semaphore::new(new_thread));
-
     let mp = Arc::new(MultiProgress::new());
+    let semaphore = Arc::new(Semaphore::new(new_thread));
 
     let handles = vec_m3u8_path_folder.into_iter().map(|(output_path, name)| {
         let mp = Arc::clone(&mp);
