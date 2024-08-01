@@ -24,11 +24,8 @@ jobs:
         with:
           path: |
             ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-cache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-cache-${{ runner.os }}-
+            ./target
+          key: test-cargo-registry
       - name: List files
         run: find ./
       - name: Run tests
@@ -45,7 +42,7 @@ jobs:
     needs: test
     runs-on: ${{ matrix.target }}
     env:
-      NAME: neko_dl
+      NAME: neko_dl # change with the name of your project
       TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v3
@@ -54,12 +51,9 @@ jobs:
         with:
           path: |
             ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-cache-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            cargo-cache-${{ runner.os }}-
-      - name: List files
+            ./target
+          key: build-cargo-registry-${{matrix.TARGET}}
+      - name: List
         run: find ./
       - name: Install and configure dependencies
         run: |
@@ -82,18 +76,25 @@ jobs:
       - name: Compress artifact
         run: |
           mkdir -p ./artifacts
-          EXEC=$NAME
-          if [[ ${{ matrix.target }} == "x86_64-pc-windows-msvc" ]]; then
+          # windows is the only OS using a different convention for executable file name
+          if [[ $OS =~ ^windows.*$ ]]; then
               EXEC=$NAME.exe
+          else
+              EXEC=$NAME
           fi
-          TAG=${{ github.ref_name }}
-          mv ./target/${{ matrix.target }}/release/$EXEC ./artifacts/$EXEC
-          tar -czf ./artifacts/$NAME-${{ matrix.target }}-$TAG.tar.gz -C ./artifacts $EXEC
-      - name: Upload artifact
+          if [[ $GITHUB_REF_TYPE =~ ^tag$ ]]; then
+            TAG=$GITHUB_REF_NAME
+          else
+            TAG=$GITHUB_SHA
+          fi
+          mv ./target/$TARGET/release/$EXEC ./$EXEC
+          tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
+      - name: Archive artifact
         uses: actions/upload-artifact@v2
         with:
-          name: $NAME-${{ matrix.target }}-$TAG
-          path: ./artifacts/$NAME-${{ matrix.target }}-$TAG.tar.gz
+          name: result
+          path: |
+            ./artifacts
 
   deploy:
     needs: build
