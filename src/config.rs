@@ -27,28 +27,31 @@ impl Default for Config {
 }
 
 impl Config{
-    pub(crate) fn load(new_args: &mut Args, tmp_path: &PathBuf, config_path: &PathBuf) -> Result<(), Box<dyn Error>>{
-        let x = match File::open(&config_path) {
+    pub(crate) fn load(new_args: &mut Args, tmp_path: &PathBuf, config_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+        let config = match File::open(&config_path) {
             Ok(mut file) => {
                 let mut tmp = String::new();
                 file.read_to_string(&mut tmp)?;
-                let x = match serde_json::from_str::<Config>(&tmp){
-                    Ok(e) => {e}
-                    Err(_) => Self::make_config_file(&tmp_path, &config_path).unwrap()
-                };
-
-                x
+                match serde_json::from_str::<Config>(&tmp) {
+                    Ok(e) => e,
+                    Err(_) => Self::make_config_file(&tmp_path, &config_path)?,
+                }
             }
-            Err(_) => {
-                if let Ok(x) = Self::make_config_file(&tmp_path, &config_path){
-                    x
-                }else { Self::default() }
-            }
+            Err(_) => Self::make_config_file(&tmp_path, &config_path)?,
         };
 
-        new_args.thread = x.thread;
-        new_args.language = x.language;
-        new_args.save_path = x.save_path;
+        if new_args.language == "vf" && new_args.language != config.language {
+            new_args.language = config.language;
+        }
+
+        if new_args.thread == 1 && new_args.thread != config.thread {
+            new_args.thread = config.thread;
+        }
+
+        if new_args.save_path == "~/tmp" && new_args.save_path != config.save_path {
+            new_args.save_path = config.save_path;
+        }
+
         Ok(())
     }
 

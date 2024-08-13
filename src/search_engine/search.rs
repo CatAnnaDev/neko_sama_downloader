@@ -15,7 +15,7 @@ pub struct ProcessingUrl {
 }
 
 pub async fn search_over_json(name: &str, lang: &str, debug: &bool, )
-    -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
+                              -> Result<Vec<ProcessingUrl>, Box<dyn Error>> {
 
     let mut edit_lang = lang.to_lowercase();
 

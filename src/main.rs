@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use chromiumoxide::{Browser, BrowserConfig, Page};
-use chromiumoxide::browser::HeadlessMode;
 use clap::Parser;
 use futures::StreamExt;
 use indicatif::MultiProgress;
@@ -163,7 +162,7 @@ async fn iter_over_url_found(main_arg: &mut MainArg)
             debug!("spawn chrome process");
         }
 
-        let config = BrowserConfig::builder().headless_mode(HeadlessMode::New).build().unwrap();
+        let config = BrowserConfig::builder().new_headless_mode().build().unwrap();
         let (mut browser, mut handler) = Browser::launch(config).await.unwrap();
 
         let handle = tokio::spawn(async move {
