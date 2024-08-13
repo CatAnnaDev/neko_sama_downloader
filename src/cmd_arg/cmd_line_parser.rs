@@ -80,6 +80,15 @@ impl Scan {
     }
 }
 
+impl Display for Scan{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Scan::Download(e) => write!(f, "{}", e),
+            Scan::Search(e) => write!(f, "{}", e),
+        }
+    }
+}
+
 impl FromStr for Scan {
     type Err = String;
     fn from_str(s: &str) -> Result<Scan, String> {
@@ -99,7 +108,7 @@ impl Display for Args {
         write!(
             f,
             "Config:\n\
-                  Url or Search:\t{:?}\n\
+                  Url or Search:\t{}\n\
                   Language:\t{}\n\
                   Threads:\t{}\n\
                   Vlc playlist:\t{}\n\

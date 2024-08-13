@@ -96,7 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn start(url_test: &str, page: &Page, main_arg: &MainArg)
-               -> Result<(), Box<dyn Error>> {
+    -> Result<(), Box<dyn Error>> {
     let before = Instant::now();
 
     let all_url_found = process::scan_main(page, url_test, main_arg).await?;
@@ -155,7 +155,7 @@ async fn start(url_test: &str, page: &Page, main_arg: &MainArg)
 }
 
 async fn iter_over_url_found(main_arg: &mut MainArg)
-                             -> Result<(), Box<dyn Error>> {
+    -> Result<(), Box<dyn Error>> {
     time_it!("Global time:", {
 
         if main_arg.new_args.debug {
@@ -185,7 +185,7 @@ async fn iter_over_url_found(main_arg: &mut MainArg)
 }
 
 async fn setup_search_or_download(new_args: &mut Args)
-                                  -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
+    -> Result<Option<Vec<ProcessingUrl>>, Box<dyn Error>> {
     let processing_url = match new_args.url_or_search_word {
         Scan::Search(ref keyword) => {
             match search::search_over_json(&keyword, &new_args.language, &new_args.debug).await {
@@ -217,7 +217,7 @@ async fn setup_search_or_download(new_args: &mut Args)
 }
 
 fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer)
-                              -> Vec<ProcessingUrl> {
+    -> Vec<ProcessingUrl> {
     answer
         .try_into_list_items()
         .unwrap()
@@ -227,7 +227,7 @@ fn find_real_link_with_answer(find: &Vec<ProcessingUrl>, answer: Answer)
 }
 
 fn build_question(find: &Vec<ProcessingUrl>)
-                  -> requestty::Result<Answer> {
+    -> requestty::Result<Answer> {
     let multi_select = Question::multi_select("Season")
         .message("What seasons do you want?")
         .choices(
@@ -286,7 +286,7 @@ fn build_print_nb_ep_film(find: &Vec<ProcessingUrl>) {
 }
 
 fn ask_keyword(new_args: &mut Args)
-               -> Result<(), Box<dyn Error>> {
+    -> Result<(), Box<dyn Error>> {
     if new_args.url_or_search_word.is_empty() {
         if let Ok(reply) = utils_data::ask_keyword("Enter url to direct download or keyword to search: ")
         {
