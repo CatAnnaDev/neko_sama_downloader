@@ -40,7 +40,7 @@ impl Config{
             Err(_) => Self::make_config_file(&tmp_path, &config_path)?,
         };
 
-        if new_args.language == "vf" && new_args.language != config.language {
+        if new_args.language == "n" && new_args.language != config.language {
             new_args.language = config.language;
         }
 

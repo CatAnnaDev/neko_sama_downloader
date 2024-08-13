@@ -13,7 +13,7 @@ pub struct Args {
     )]
     pub url_or_search_word: Scan,
 
-    #[arg(short = 'l', long, default_value = "vf", help = "vf or vostfr")]
+    #[arg(short = 'l', long, default_value = "n", help = "vf or vostfr")]
     pub language: String,
 
     #[arg(

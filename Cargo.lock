@@ -1118,7 +1118,7 @@ dependencies = [
 
 [[package]]
 name = "neko_dl"
-version = "0.15.3"
+version = "0.15.4"
 dependencies = [
  "chromiumoxide",
  "clap",
