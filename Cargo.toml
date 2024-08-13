@@ -1,6 +1,6 @@
 [package]
 name = "neko_dl"
-version = "0.15.2"
+version = "0.15.3"
 edition = "2021"
 homepage = "https://github.com/CatAnnaDev/neko_sama_downloader"
 repository = "https://github.com/CatAnnaDev/neko_sama_downloader"
