@@ -1,3 +1,4 @@
+use std::env;
 use std::io::BufRead;
 use std::fs::File;
 use std::time::Duration;
@@ -14,7 +15,7 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
     let ffmpeg = "ffmpeg";
 
     #[cfg(target_os = "windows")]
-    let ffmpeg = "ffmpeg.exe";
+    let ffmpeg = env::current_exe().unwrap().parent().unwrap().join("utils/ffmpeg.exe"); // TODO change this
 
     let mut process = Command::new(ffmpeg).args(&[
         "-protocol_whitelist",

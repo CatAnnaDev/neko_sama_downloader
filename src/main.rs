@@ -2,6 +2,7 @@
 
 use std::{env, error::Error, str::FromStr, time::Instant};
 use std::path::PathBuf;
+use std::process::exit;
 use std::sync::Arc;
 
 use chromiumoxide::{Browser, BrowserConfig, Page};
@@ -162,8 +163,11 @@ async fn iter_over_url_found(main_arg: &mut MainArg)
             debug!("spawn chrome process");
         }
 
-        let config = BrowserConfig::builder().new_headless_mode().build().unwrap();
-        let (mut browser, mut handler) = Browser::launch(config).await.unwrap();
+        let config = BrowserConfig::builder().new_headless_mode().build()?;
+        let (mut browser, mut handler) = match Browser::launch(config).await{
+            Ok((browse, handler)) => (browse, handler),
+            Err(e) => {error!("Browser::launch(config).await: {}", e); exit(0) }
+        };
 
         let handle = tokio::spawn(async move {
             while let Some(Ok(event)) = handler.next().await {
