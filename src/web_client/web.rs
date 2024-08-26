@@ -14,7 +14,7 @@ pub async fn download_build_video(path: &str, name: &str, mp: &Arc<MultiProgress
     let ffmpeg = "ffmpeg";
 
     #[cfg(target_os = "windows")]
-    let ffmpeg = env::current_exe().unwrap().parent().unwrap().join("utils/ffmpeg.exe"); // TODO change this
+    let ffmpeg = std::env::current_exe().unwrap().parent().unwrap().join("utils/ffmpeg.exe"); // TODO change this
 
     let mut process = Command::new(ffmpeg).args(&[
         "-protocol_whitelist",
