@@ -1,4 +1,3 @@
-use std::env;
 use std::io::BufRead;
 use std::fs::File;
 use std::time::Duration;

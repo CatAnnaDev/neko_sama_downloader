@@ -254,6 +254,13 @@ fn build_question(find: &Vec<ProcessingUrl>)
         .on_esc(OnEsc::Terminate)
         .page_size(20)
         .should_loop(false)
+        .validate(|answer, _| {
+            if answer.iter().filter(|&&a| a).count() < 1 {
+                Err("You must choose at least one anime.\nwith <space> key or <A> to toggle all or <i> to invert selection ".into())
+            } else {
+                Ok(())
+            }
+        })
         .build();
 
     prompt_one(multi_select)
