@@ -1,11 +1,13 @@
-use std::{env, fs};
+use std::env;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
 use serde::{Deserialize, Serialize};
-use crate::error;
+
 use crate::cmd_arg::cmd_line_parser::Args;
+use crate::error;
 use crate::utils::utils_data;
 use crate::utils::utils_data::ask_config;
 
@@ -18,7 +20,7 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self{
+        Self {
             language: "vf".to_string(),
             thread: 1,
             save_path: "".to_string(),
@@ -26,7 +28,7 @@ impl Default for Config {
     }
 }
 
-impl Config{
+impl Config {
     pub(crate) fn load(new_args: &mut Args, tmp_path: &PathBuf, config_path: &PathBuf) -> Result<(), Box<dyn Error>> {
         let config = match File::open(&config_path) {
             Ok(mut file) => {
@@ -55,10 +57,10 @@ impl Config{
         Ok(())
     }
 
-    pub(crate) fn make_config_file(tmp_path: &PathBuf, config_path: &PathBuf) -> Result<Config, Box<dyn Error>>{
+    pub(crate) fn make_config_file(tmp_path: &PathBuf, config_path: &PathBuf) -> Result<Config, Box<dyn Error>> {
         let language = ask_config("Language ?", vec!["vf", "vostfr"])?;
         let thread = utils_data::ask_keyword("Nb Worker?")?;
-        let save_path = utils_data::ask_keyword("Save Path")?;
+        let save_path = utils_data::ask_keyword("Save Path for video")?;
 
         let config = Config {
             language: language.as_list_item()
@@ -68,7 +70,22 @@ impl Config{
                 .and_then(|e| e.parse::<usize>().ok())
                 .unwrap_or(1),
             save_path: match save_path.as_string() {
-                Some(e) => if e.is_empty() { tmp_path.display().to_string() } else { e.to_string() },
+                Some(e) => if e.is_empty() {
+                    tmp_path.display().to_string()
+                } else {
+                    if Path::exists(Path::new(e)) {
+                        e.to_string();
+                    } else {
+                        match create_dir_all(e) {
+                            Ok(()) => {}
+                            Err(e) => {
+                                error!("save_path Error: {}", e)
+                            }
+                        }
+                        e.to_string();
+                    }
+                    e.to_string()
+                },
                 None => tmp_path.display().to_string()
             },
         };
@@ -101,7 +118,7 @@ impl Config{
         }
 
         if !config_dir.exists() {
-            fs::create_dir_all(&config_dir)?;
+            create_dir_all(&config_dir)?;
         }
         Ok(config_dir)
     }
